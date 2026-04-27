@@ -2,25 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ───── Base ──────────────────────────────────────────────── */
+
 html, body, #root {
   height: 100%;
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 font-sans antialiased;
+html {
+  font-feature-settings: 'kern', 'liga', 'calt', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  @apply bg-paper-100 text-ink-700 font-sans;
+  background-image:
+    radial-gradient(1200px 600px at 100% -20%, rgba(212, 160, 59, 0.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(45, 74, 62, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(212, 160, 59, 0.35);
+  color: #1F1B16;
+}
+
+/* ───── Typography ────────────────────────────────────────── */
+
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-feature-settings: 'liga', 'kern', 'ss01';
+  font-variation-settings: 'opsz' 144;
+}
+
+h1, h2, h3, h4 {
+  @apply text-ink-900;
+}
+
+/* ───── Component layer ───────────────────────────────────── */
+
 @layer components {
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium tracking-tight rounded-md
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-paper-100;
+  }
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn bg-forest-700 text-paper-50 hover:bg-forest-800 active:bg-forest-900
+           focus-visible:ring-forest-700 shadow-paper;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2;
+    @apply btn bg-paper-50 text-ink-800 border border-paper-300 hover:border-ink-700 hover:bg-paper-100
+           focus-visible:ring-ink-700;
   }
+  .btn-ghost {
+    @apply btn text-ink-600 hover:text-ink-900 hover:bg-paper-200;
+  }
+  .btn-gold {
+    @apply btn bg-gold-500 text-ink-900 hover:bg-gold-600 focus-visible:ring-gold-500 shadow-paper;
+  }
+  .btn-danger {
+    @apply btn bg-terra-500 text-paper-50 hover:bg-terra-700 focus-visible:ring-terra-500;
+  }
+
+  /* Inputs */
   .input {
-    @apply block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm border px-3 py-2;
+    @apply block w-full rounded-md border border-paper-300 bg-paper-50 px-3 py-2 text-sm text-ink-900
+           placeholder:text-ink-400 transition-colors
+           focus:outline-none focus:border-forest-700 focus:ring-1 focus:ring-forest-700/30;
   }
+
+  /* Cards */
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-slate-200 p-6;
+    @apply bg-paper-50 rounded-lg border border-paper-200 p-6 shadow-paper;
+  }
+  .card-flat {
+    @apply bg-paper-50 rounded-lg border border-paper-200 p-6;
+  }
+  .card-bare {
+    @apply bg-paper-50 rounded-lg border border-paper-200;
+  }
+
+  /* Badges / pills */
+  .pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium tracking-tight border;
+  }
+  .pill-forest { @apply pill bg-forest-50 text-forest-700 border-forest-100; }
+  .pill-gold { @apply pill bg-gold-50 text-gold-700 border-gold-100; }
+  .pill-sage { @apply pill bg-sage-50 text-sage-700 border-sage-50; }
+  .pill-terra { @apply pill bg-terra-50 text-terra-700 border-terra-50; }
+  .pill-ink { @apply pill bg-paper-200 text-ink-700 border-paper-300; }
+
+  /* Section heading: editorial caption + display title */
+  .eyebrow {
+    @apply inline-block uppercase tracking-[0.18em] text-[11px] font-semibold text-ink-500 mb-3;
+  }
+
+  /* Decorative rule */
+  .rule {
+    @apply border-t border-ink-900/10;
+  }
+
+  /* Subtle hairline divider with caption */
+  .hairline-label {
+    @apply flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-ink-400 font-semibold;
+  }
+  .hairline-label::before,
+  .hairline-label::after {
+    content: '';
+    @apply flex-1 border-t border-ink-900/10;
+  }
+}
+
+/* ───── Animations / utilities ───────────────────────────── */
+
+@layer utilities {
+  .stagger-1 { animation-delay: 60ms; }
+  .stagger-2 { animation-delay: 120ms; }
+  .stagger-3 { animation-delay: 180ms; }
+  .stagger-4 { animation-delay: 240ms; }
+  .stagger-5 { animation-delay: 300ms; }
+
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    @apply bg-grain opacity-[0.35] mix-blend-multiply;
+    z-index: 1;
+  }
+
+  .text-balance { text-wrap: balance; }
+
+  .num {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: 'tnum', 'lnum';
   }
 }

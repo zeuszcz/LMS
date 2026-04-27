@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight, CalendarDays } from 'lucide-react';
 import { fetchLessons } from '@/api/lessons';
-import { formatDateTime, LESSON_STATUS_LABEL } from '@/lib/format';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { LessonStatusPill } from '@/components/ui/StatusPill';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { formatDateTime } from '@/lib/format';
 
 export function LessonsPage() {
   const [showPast, setShowPast] = useState(false);
@@ -11,49 +16,71 @@ export function LessonsPage() {
     queryFn: () => fetchLessons({ upcoming_only: !showPast }),
   });
 
-  if (lessons.isLoading) return <div className="text-slate-500">Загрузка…</div>;
-  if (lessons.isError) return <div className="text-red-600">Ошибка загрузки</div>;
-
-  const sorted = (lessons.data ?? []).slice().sort(
-    (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
-  );
+  const sorted = (lessons.data ?? [])
+    .slice()
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Уроки</h1>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-          Показать прошедшие
-        </label>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Расписание"
+        title="Уроки"
+        description="Список запланированных и проведённых уроков."
+        actions={
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-ink-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showPast}
+              onChange={(e) => setShowPast(e.target.checked)}
+              className="rounded border-paper-300 text-forest-700 focus:ring-forest-700"
+            />
+            Показать прошедшие
+          </label>
+        }
+      />
 
-      <div className="card divide-y divide-slate-100">
-        {sorted.length === 0 && <div className="text-slate-500 text-center py-4">Уроков нет</div>}
-        {sorted.map((l) => (
-          <Link
-            key={l.id}
-            to={`/lessons/${l.id}`}
-            className="flex items-center justify-between py-3 px-1 hover:bg-slate-50"
-          >
-            <div>
-              <div className="font-medium text-slate-900">#{l.sequence} {l.title}</div>
-              <div className="text-xs text-slate-500">{formatDateTime(l.scheduled_at)}</div>
-            </div>
-            <span
-              className={
-                l.status === 'finished'
-                  ? 'text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded'
-                  : l.status === 'in_progress'
-                  ? 'text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded'
-                  : 'text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded'
-              }
+      {lessons.isLoading ? (
+        <div className="card space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
+      ) : sorted.length === 0 ? (
+        <EmptyState
+          icon={<CalendarDays size={20} strokeWidth={1.6} />}
+          title="Уроков нет"
+          description="Когда уроки появятся в расписании, они отобразятся здесь."
+        />
+      ) : (
+        <div className="card-bare divide-y divide-ink-900/5">
+          {sorted.map((l) => (
+            <Link
+              key={l.id}
+              to={`/lessons/${l.id}`}
+              className="group flex items-center justify-between gap-3 px-5 py-4 hover:bg-paper-100 transition-colors"
             >
-              {LESSON_STATUS_LABEL[l.status]}
-            </span>
-          </Link>
-        ))}
-      </div>
+              <div className="flex items-center gap-4 min-w-0">
+                <span className="font-display text-3xl font-light text-ink-300 num leading-none flex-shrink-0">
+                  {String(l.sequence).padStart(2, '0')}
+                </span>
+                <div className="min-w-0">
+                  <div className="font-display text-base font-medium text-ink-900 truncate">
+                    {l.title}
+                  </div>
+                  <div className="text-xs text-ink-500 num">{formatDateTime(l.scheduled_at)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <LessonStatusPill status={l.status} />
+                <ArrowUpRight
+                  size={14}
+                  className="text-ink-300 group-hover:text-forest-700 transition-colors"
+                />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

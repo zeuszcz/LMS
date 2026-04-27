@@ -1,35 +1,51 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight, Layers } from 'lucide-react';
 import { fetchGroups } from '@/api/groups';
 import { fetchCourses } from '@/api/courses';
 import { fetchBranches } from '@/api/branches';
-import {
-  formatDate,
-  GROUP_MODE_LABEL,
-  GROUP_STATUS_LABEL,
-  LANGUAGE_LABEL,
-} from '@/lib/format';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { LanguageMark } from '@/components/ui/LanguageMark';
+import { GroupStatusPill } from '@/components/ui/StatusPill';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { GROUP_MODE_LABEL, formatDate } from '@/lib/format';
 
 export function GroupsPage() {
   const groups = useQuery({ queryKey: ['groups'], queryFn: () => fetchGroups() });
-  const courses = useQuery({ queryKey: ['courses-all'], queryFn: () => fetchCourses({ limit: 100, only_published: false }) });
+  const courses = useQuery({
+    queryKey: ['courses-all'],
+    queryFn: () => fetchCourses({ limit: 100, only_published: false }),
+  });
   const branches = useQuery({ queryKey: ['branches-all'], queryFn: fetchBranches });
-
-  if (groups.isLoading) return <div className="text-slate-500">Загрузка…</div>;
-  if (groups.isError) return <div className="text-red-600">Ошибка загрузки</div>;
 
   const courseById = new Map((courses.data?.items ?? []).map((c) => [c.id, c]));
   const branchById = new Map((branches.data ?? []).map((b) => [b.id, b]));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Группы</h1>
-        <span className="text-sm text-slate-500">Всего: {groups.data?.length ?? 0}</span>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Учебные группы"
+        title="Группы"
+        description={`Активных учебных групп: ${groups.data?.length ?? '—'}.`}
+      />
 
-      {(groups.data ?? []).length === 0 ? (
-        <div className="card text-center text-slate-500">У вас нет доступных групп.</div>
+      {groups.isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card space-y-3">
+              <Skeleton className="h-9 w-9 rounded" />
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : (groups.data ?? []).length === 0 ? (
+        <EmptyState
+          icon={<Layers size={20} strokeWidth={1.6} />}
+          title="Групп пока нет"
+          description="У вас нет доступа к группам или группы ещё не созданы методистом."
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {(groups.data ?? []).map((g) => {
@@ -39,34 +55,26 @@ export function GroupsPage() {
               <Link
                 key={g.id}
                 to={`/groups/${g.id}`}
-                className="card hover:shadow-md hover:border-brand-500 transition"
+                className="card group hover:border-forest-700 transition-colors flex flex-col"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-slate-900">
-                    {course?.title ?? 'Курс'}
-                  </h3>
-                  <span className="text-xs font-mono bg-brand-50 text-brand-700 px-2 py-0.5 rounded">
-                    {course?.level ?? '—'}
-                  </span>
+                <div className="flex items-start justify-between gap-3">
+                  {course && <LanguageMark language={course.language} size="lg" />}
+                  <span className="pill-forest font-mono">{course?.level ?? '—'}</span>
                 </div>
-                <div className="text-sm text-slate-500 mt-1">
-                  {course && LANGUAGE_LABEL[course.language]} · {GROUP_MODE_LABEL[g.mode]}
+                <h3 className="font-display text-base font-semibold text-ink-900 mt-4 leading-tight text-balance">
+                  {course?.title ?? 'Курс не определён'}
+                </h3>
+                <div className="text-xs text-ink-500 mt-1">
+                  {branch?.name ?? 'Онлайн-формат'} · {GROUP_MODE_LABEL[g.mode]}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-slate-600">{branch?.name ?? 'Онлайн'}</span>
-                  <span
-                    className={
-                      g.status === 'active'
-                        ? 'text-green-700 bg-green-50 px-2 py-0.5 rounded'
-                        : 'text-slate-500 bg-slate-100 px-2 py-0.5 rounded'
-                    }
-                  >
-                    {GROUP_STATUS_LABEL[g.status]}
-                  </span>
+
+                <div className="rule mt-5 pt-3 flex items-center justify-between text-[11px] tracking-tight">
+                  <span className="text-ink-500 num">с {formatDate(g.start_date)}</span>
+                  <GroupStatusPill status={g.status} />
                 </div>
-                <div className="mt-2 text-xs text-slate-400">
-                  с {formatDate(g.start_date)}
-                  {g.end_date && ` до ${formatDate(g.end_date)}`}
+                <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-forest-700 group-hover:gap-2 transition-all">
+                  Открыть журнал
+                  <ArrowUpRight size={12} strokeWidth={2} />
                 </div>
               </Link>
             );

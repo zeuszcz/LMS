@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Search, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { fetchUsers } from '@/api/users';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { formatDate } from '@/lib/format';
 
 export function UsersPage() {
   const [filter, setFilter] = useState('');
   const users = useQuery({ queryKey: ['users-page'], queryFn: () => fetchUsers({ limit: 200 }) });
-
-  if (users.isLoading) return <div className="text-slate-500">Загрузка…</div>;
 
   const items = (users.data ?? []).filter((u) => {
     if (!filter) return true;
@@ -20,47 +21,105 @@ export function UsersPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">Пользователи</h1>
-        <input
-          type="text"
-          placeholder="Поиск по имени / email / телефону"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="input text-sm w-64"
-        />
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="База пользователей"
+        title="Пользователи"
+        description="Студенты, преподаватели, методисты, родители — все участники процесса."
+        actions={
+          <div className="relative">
+            <Search
+              size={14}
+              strokeWidth={1.6}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              placeholder="Поиск по имени, email, телефону"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="input pl-9 text-sm w-72"
+            />
+          </div>
+        }
+      />
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left border-b border-slate-200">
-              <th className="py-2">Имя</th>
-              <th className="py-2">Email</th>
-              <th className="py-2">Телефон</th>
-              <th className="py-2">Тип</th>
-              <th className="py-2">Создан</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((u) => (
-              <tr key={u.id} className="border-b border-slate-100">
-                <td className="py-2">{u.full_name}</td>
-                <td className="py-2 font-mono text-xs">{u.email ?? '—'}</td>
-                <td className="py-2 font-mono text-xs">{u.phone ?? '—'}</td>
-                <td className="py-2">
-                  {u.is_superuser && (
-                    <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded">superuser</span>
-                  )}
-                </td>
-                <td className="py-2 text-slate-500 text-xs">{formatDate(u.created_at)}</td>
+      {users.isLoading ? (
+        <div className="card text-ink-500 text-sm">Загрузка…</div>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={<UserCircle2 size={20} strokeWidth={1.6} />}
+          title={filter ? 'Не нашлось никого' : 'Пользователей нет'}
+          description={filter ? 'Попробуйте другой запрос.' : 'Список пуст.'}
+        />
+      ) : (
+        <div className="card-bare overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-ink-900/10 bg-paper-100">
+                <Th>Имя</Th>
+                <Th>Email</Th>
+                <Th>Телефон</Th>
+                <Th>Тип</Th>
+                <Th align="right">Создан</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="text-xs text-slate-400 mt-2">{items.length} из {(users.data ?? []).length}</div>
-      </div>
+            </thead>
+            <tbody>
+              {items.map((u) => (
+                <tr key={u.id} className="border-b border-ink-900/5 last:border-0 hover:bg-paper-100 transition-colors">
+                  <Td>
+                    <div className="font-medium text-ink-900">{u.full_name}</div>
+                  </Td>
+                  <Td>
+                    <span className="font-mono text-xs text-ink-600">{u.email ?? '—'}</span>
+                  </Td>
+                  <Td>
+                    <span className="font-mono text-xs text-ink-600">{u.phone ?? '—'}</span>
+                  </Td>
+                  <Td>
+                    {u.is_superuser ? (
+                      <span className="inline-flex items-center gap-1 pill bg-ink-900 text-paper-50 border-ink-900">
+                        <ShieldCheck size={10} strokeWidth={2} />
+                        superuser
+                      </span>
+                    ) : (
+                      <span className="text-ink-400 text-xs">—</span>
+                    )}
+                  </Td>
+                  <Td align="right">
+                    <span className="text-xs text-ink-500 num">{formatDate(u.created_at)}</span>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="px-5 py-3 border-t border-ink-900/10 bg-paper-100 text-[10px] uppercase tracking-[0.2em] text-ink-500 font-semibold">
+            {items.length} из {(users.data ?? []).length}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function Th({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
+  return (
+    <th
+      className={
+        align === 'right'
+          ? 'text-right px-5 py-3 text-[10px] uppercase tracking-[0.2em] text-ink-500 font-semibold'
+          : 'text-left px-5 py-3 text-[10px] uppercase tracking-[0.2em] text-ink-500 font-semibold'
+      }
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({ children, align = 'left' }: { children: React.ReactNode; align?: 'left' | 'right' }) {
+  return (
+    <td className={align === 'right' ? 'text-right px-5 py-3 text-sm' : 'px-5 py-3 text-sm'}>
+      {children}
+    </td>
   );
 }
