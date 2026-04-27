@@ -57,3 +57,8 @@ export async function closeLesson(
   });
   return data;
 }
+
+export async function selfCompleteLesson(id: string): Promise<AttendanceRow> {
+  const { data } = await api.post<AttendanceRow>(`/api/lessons/${id}/self-complete`);
+  return data;
+}

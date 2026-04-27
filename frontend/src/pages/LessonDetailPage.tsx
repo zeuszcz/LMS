@@ -1,15 +1,17 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ClipboardCheck, Lock, Play, Save } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ClipboardCheck, Lock, Play, Save, Sparkles } from 'lucide-react';
 import {
   AttendanceInput,
   closeLesson,
   fetchAttendance,
   fetchLesson,
   recordAttendance,
+  selfCompleteLesson,
   startLesson,
 } from '@/api/lessons';
+import { toast } from '@/components/ui/Toast';
 import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchUsers } from '@/api/users';
 import { useAuthStore } from '@/stores/authStore';
@@ -110,6 +112,28 @@ export function LessonDetailPage() {
       qc.invalidateQueries({ queryKey: ['attendance', id] });
     },
   });
+  const selfComplete = useMutation({
+    mutationFn: () => selfCompleteLesson(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance', id] });
+      qc.invalidateQueries({ queryKey: ['module'] });
+      toast('success', 'Урок изучен', 'Прогресс обновлён');
+    },
+    onError: (err: { response?: { data?: { detail?: string } } }) => {
+      toast('error', 'Не удалось отметить', err?.response?.data?.detail ?? 'Ошибка');
+    },
+  });
+
+  const myAttendance = (attendance.data ?? []).find((a) => a.student_id === user?.id);
+  const isStudent =
+    !!user &&
+    user.roles.includes('student') &&
+    !user.roles.includes('teacher') &&
+    !user.roles.includes('admin') &&
+    !user.is_superuser;
+  const showSelfComplete = isStudent && !!lesson.data?.content_md;
+  const completedByStudent =
+    myAttendance && (myAttendance.status === 'present' || myAttendance.status === 'late');
 
   if (lesson.isLoading) {
     return (
@@ -188,6 +212,48 @@ export function LessonDetailPage() {
             <div className="eyebrow">Материал урока</div>
             <LessonMarkdown content={lesson.data.content_md} />
           </div>
+        </div>
+      )}
+
+      {/* Self-completion CTA (student only) */}
+      {showSelfComplete && (
+        <div
+          className={
+            completedByStudent
+              ? 'rounded-3xl bg-sage-50 border-2 border-sage-300 p-6 sm:p-8 flex items-start gap-4 flex-wrap'
+              : 'rounded-3xl bg-gradient-to-br from-forest-600 to-forest-800 text-white p-6 sm:p-8 shadow-pop-lg flex items-start gap-4 flex-wrap relative overflow-hidden'
+          }
+        >
+          {!completedByStudent && (
+            <div className="blob bg-gold-500 h-40 w-40 -top-8 -right-8 opacity-30" />
+          )}
+          <div className={completedByStudent ? 'inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sage-500 text-white flex-shrink-0' : 'inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur border border-white/30 flex-shrink-0 relative'}>
+            {completedByStudent ? (
+              <CheckCircle2 size={22} strokeWidth={2.5} />
+            ) : (
+              <Sparkles size={22} strokeWidth={2} />
+            )}
+          </div>
+          <div className="flex-1 min-w-0 relative">
+            <h3 className={completedByStudent ? 'font-display text-xl font-extrabold text-sage-700' : 'font-display text-xl font-extrabold'}>
+              {completedByStudent ? 'Урок пройден' : 'Готовы двигаться дальше?'}
+            </h3>
+            <p className={completedByStudent ? 'text-sm text-sage-700/80 mt-1' : 'text-sm text-white/85 mt-1'}>
+              {completedByStudent
+                ? 'Вы изучили материал. Прогресс модуля обновлён.'
+                : 'Когда дочитаете и проработаете материал, отметьте урок как изученный — обновим ваш прогресс модуля.'}
+            </p>
+          </div>
+          {!completedByStudent && (
+            <button
+              onClick={() => selfComplete.mutate()}
+              disabled={selfComplete.isPending}
+              className="rounded-xl bg-white text-forest-700 hover:bg-paper-100 px-5 h-11 text-sm font-bold inline-flex items-center gap-2 shadow-pop transition-colors flex-shrink-0 relative"
+            >
+              <CheckCircle2 size={16} strokeWidth={2.5} />
+              {selfComplete.isPending ? 'Сохранение…' : 'Я изучил материал'}
+            </button>
+          )}
         </div>
       )}
 

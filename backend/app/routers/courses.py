@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models.course import AgeGroup, CefrLevel, Course, Language
 from app.models.course_content import CourseFeature, CourseModule, CourseReview
 from app.models.group import Enrollment, Group, GroupStatus
+from app.models.lesson import Attendance, AttendanceStatus, LessonInstance
 from app.schemas.course import CourseCreate, CourseList, CourseOut
 from app.schemas.course_detail import (
     CourseDetail,
@@ -19,6 +20,7 @@ from app.schemas.course_detail import (
     ModuleOut,
     ReviewOut,
 )
+from app.schemas.module_lessons import ModuleLessonOut, ModuleProgress
 from app.models.user import User, UserRole
 
 router = APIRouter()
@@ -178,6 +180,137 @@ async def course_detail(
         avg_rating=float(avg) if avg is not None else None,
         reviews_count=int(rcount),
         available_groups=available_groups,
+    )
+
+
+@router.get(
+    "/{course_id}/modules/{module_order}/lessons",
+    response_model=ModuleProgress,
+)
+async def module_lessons(
+    course_id: UUID,
+    module_order: int,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ModuleProgress:
+    """Lessons of a single module for the current student.
+
+    Module N (1-based) corresponds to lessons with sequence in
+    [(N-1) * lessons_per_module + 1 .. N * lessons_per_module] within the
+    student's enrolled group for that course. If the student is not enrolled
+    yet, returns lessons for any first available group as a preview.
+    """
+    course_res = await db.execute(select(Course).where(Course.id == course_id))
+    course = course_res.scalar_one_or_none()
+    if course is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    module_res = await db.execute(
+        select(CourseModule).where(
+            CourseModule.course_id == course_id,
+            CourseModule.order_index == module_order,
+            CourseModule.deleted_at.is_(None),
+        )
+    )
+    module = module_res.scalar_one_or_none()
+    if module is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Module not found")
+
+    # Find the student's group for this course (any active enrollment)
+    enrolled_group_res = await db.execute(
+        select(Group)
+        .join(Enrollment, Enrollment.group_id == Group.id)
+        .where(
+            Enrollment.student_id == user.id,
+            Enrollment.left_at.is_(None),
+            Enrollment.deleted_at.is_(None),
+            Group.course_id == course_id,
+            Group.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    group = enrolled_group_res.scalar_one_or_none()
+    enrolled = group is not None
+
+    # If not enrolled, fall back to any active group of the course (preview-only)
+    if group is None:
+        any_group_res = await db.execute(
+            select(Group)
+            .where(
+                Group.course_id == course_id,
+                Group.deleted_at.is_(None),
+                Group.status.in_([GroupStatus.planned, GroupStatus.active]),
+            )
+            .order_by(Group.start_date.desc())
+            .limit(1)
+        )
+        group = any_group_res.scalar_one_or_none()
+
+    if group is None:
+        return ModuleProgress(
+            course_id=course_id,
+            module_order=module_order,
+            module_title=module.title,
+            module_summary=module.summary,
+            group_id=None,
+            enrolled=False,
+            lessons=[],
+            completed=0,
+            total=0,
+        )
+
+    lessons_per_module = max(1, module.lessons_count)
+    seq_from = (module_order - 1) * lessons_per_module + 1
+    seq_to = module_order * lessons_per_module
+
+    lessons_res = await db.execute(
+        select(LessonInstance)
+        .where(
+            LessonInstance.group_id == group.id,
+            LessonInstance.sequence.between(seq_from, seq_to),
+        )
+        .order_by(LessonInstance.sequence)
+    )
+    lessons = list(lessons_res.scalars().all())
+
+    completed_set: set[UUID] = set()
+    if enrolled and lessons:
+        att_res = await db.execute(
+            select(Attendance.lesson_instance_id).where(
+                Attendance.student_id == user.id,
+                Attendance.lesson_instance_id.in_([l.id for l in lessons]),
+                Attendance.status.in_(
+                    [AttendanceStatus.present, AttendanceStatus.late]
+                ),
+            )
+        )
+        completed_set = {row[0] for row in att_res.all()}
+
+    out_lessons = [
+        ModuleLessonOut(
+            id=l.id,
+            sequence=l.sequence,
+            title=l.title,
+            summary=l.summary,
+            content_md=l.content_md,
+            duration_min=l.duration_min,
+            status=l.status,
+            scheduled_at=l.scheduled_at,
+            is_completed=l.id in completed_set,
+        )
+        for l in lessons
+    ]
+
+    return ModuleProgress(
+        course_id=course_id,
+        module_order=module_order,
+        module_title=module.title,
+        module_summary=module.summary,
+        group_id=group.id if enrolled else None,
+        enrolled=enrolled,
+        lessons=out_lessons,
+        completed=len(completed_set),
+        total=len(lessons),
     )
 
 

@@ -129,6 +129,30 @@ export interface ActiveEnrollment {
   started_at: string;
 }
 
+export interface ModuleLesson {
+  id: string;
+  sequence: number;
+  title: string;
+  summary: string | null;
+  content_md: string | null;
+  duration_min: number;
+  status: LessonStatus;
+  scheduled_at: string;
+  is_completed: boolean;
+}
+
+export interface ModuleProgress {
+  course_id: string;
+  module_order: number;
+  module_title: string;
+  module_summary: string | null;
+  group_id: string | null;
+  enrolled: boolean;
+  lessons: ModuleLesson[];
+  completed: number;
+  total: number;
+}
+
 export interface ScheduleSlot {
   id: string;
   group_id: string;

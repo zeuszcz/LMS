@@ -224,7 +224,7 @@ export function CourseDetailPage() {
             </div>
             <div className="lg:col-span-2 space-y-2">
               {c.modules.map((m, i) => (
-                <ModuleAccordion key={m.id} module={m} index={i} />
+                <ModuleAccordion key={m.id} module={m} index={i} courseId={c.id} />
               ))}
             </div>
           </div>
@@ -382,7 +382,15 @@ function FeatureCard({ feature, index }: { feature: CourseFeature; index: number
   );
 }
 
-function ModuleAccordion({ module, index }: { module: CourseModule; index: number }) {
+function ModuleAccordion({
+  module,
+  index,
+  courseId,
+}: {
+  module: CourseModule;
+  index: number;
+  courseId: string;
+}) {
   const [open, setOpen] = useState(index === 0);
   return (
     <div
@@ -412,9 +420,18 @@ function ModuleAccordion({ module, index }: { module: CourseModule; index: numbe
           className={open ? 'text-forest-600 transition-transform rotate-180' : 'text-ink-400 transition-transform'}
         />
       </button>
-      {open && module.summary && (
-        <div className="px-5 pb-5 pl-[calc(20px+40px+16px)] -mt-1 text-sm text-ink-700 leading-relaxed animate-fade-up">
-          {module.summary}
+      {open && (
+        <div className="px-5 pb-5 pl-[calc(20px+40px+16px)] -mt-1 space-y-3 animate-fade-up">
+          {module.summary && (
+            <p className="text-sm text-ink-700 leading-relaxed">{module.summary}</p>
+          )}
+          <Link
+            to={`/courses/${courseId}/modules/${module.order_index}`}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-forest-700 hover:gap-2 transition-all"
+          >
+            Открыть модуль
+            <ArrowRight size={14} strokeWidth={2.5} />
+          </Link>
         </div>
       )}
     </div>

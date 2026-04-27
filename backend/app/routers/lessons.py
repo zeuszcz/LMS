@@ -256,3 +256,54 @@ async def get_attendance(
         select(Attendance).where(Attendance.lesson_instance_id == lesson_id)
     )
     return list(result.scalars().all())
+
+
+@router.post("/{lesson_id}/self-complete", response_model=AttendanceOut)
+async def self_complete(
+    lesson_id: UUID,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Attendance:
+    """Student marks the lesson's material as studied. Creates / updates own
+    attendance row with status=present and recorded_by=self."""
+    lesson = await _get_lesson_or_404(db, lesson_id)
+
+    enrolled = await db.execute(
+        select(Enrollment).where(
+            Enrollment.student_id == user.id,
+            Enrollment.group_id == lesson.group_id,
+            Enrollment.left_at.is_(None),
+            Enrollment.deleted_at.is_(None),
+        )
+    )
+    if enrolled.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Сначала запишитесь в группу этого курса",
+        )
+
+    existing = await db.execute(
+        select(Attendance).where(
+            Attendance.lesson_instance_id == lesson_id,
+            Attendance.student_id == user.id,
+        )
+    )
+    att = existing.scalar_one_or_none()
+    if att is None:
+        att = Attendance(
+            lesson_instance_id=lesson_id,
+            student_id=user.id,
+            status=AttendanceStatus.present,
+            recorded_by=user.id,
+            comment="self-completed",
+        )
+        db.add(att)
+    elif att.status not in (AttendanceStatus.present, AttendanceStatus.late):
+        att.status = AttendanceStatus.present
+        att.recorded_by = user.id
+        if not att.comment:
+            att.comment = "self-completed"
+
+    await db.commit()
+    await db.refresh(att)
+    return att
