@@ -1,0 +1,78 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+build/
+dist/
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+.uv/
+uv.lock
+
+# --- Node ---
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+dist/
+build/
+.vite/
+.eslintcache
+*.log
+.parcel-cache/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Env ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Docker volumes ---
+.docker-data/
+postgres-data/
+redis-data/
+minio-data/
+
+# --- DB / Backups ---
+*.sqlite
+*.sqlite3
+*.db
+*.sql.bak
+*.dump
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Misc ---
+.cache/
+tmp/
+temp/
+*.tmp
+
+# --- SecondBrain raw / daily transient ---
+secondbrain/daily/*.tmp
+secondbrain/.staleness-cache
