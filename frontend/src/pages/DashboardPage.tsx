@@ -5,11 +5,11 @@ import {
   Building2,
   CalendarClock,
   GraduationCap,
-  Headphones,
   Layers,
   Mail,
   PenLine,
   Sparkles,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -38,6 +38,49 @@ export function DashboardPage() {
   return <div className="text-ink-500">Для вашей роли дашборд ещё не настроен.</div>;
 }
 
+/* ─── HERO ────────────────────────────────────────────────── */
+
+function HeroCard({
+  eyebrow,
+  greeting,
+  subline,
+  cta,
+}: {
+  eyebrow: string;
+  greeting: string;
+  subline: string;
+  cta?: { to: string; label: string };
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-forest-600 via-forest-700 to-forest-900 px-8 py-10 sm:px-12 sm:py-14 text-white shadow-pop-lg">
+      <div className="blob bg-gold-500 h-[300px] w-[300px] -top-20 -right-20 opacity-30" />
+      <div className="blob bg-forest-500 h-[400px] w-[400px] -bottom-32 -left-20 opacity-30" />
+
+      <div className="relative z-10 max-w-3xl">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur px-3 py-1 text-[10px] uppercase tracking-[0.16em] font-bold text-white mb-5 border border-white/20">
+          <Sparkles size={11} strokeWidth={2} />
+          {eyebrow}
+        </div>
+        <h1 className="font-display text-display-xl font-extrabold tracking-tight leading-[1.0] text-balance">
+          Здравствуйте, {greeting}
+        </h1>
+        <p className="mt-4 text-white/80 text-base sm:text-lg max-w-xl text-pretty leading-relaxed">
+          {subline}
+        </p>
+        {cta && (
+          <Link
+            to={cta.to}
+            className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white text-forest-700 hover:bg-paper-100 px-5 h-11 text-sm font-semibold tracking-tight transition-colors shadow-pop"
+          >
+            {cta.label}
+            <ArrowUpRight size={16} strokeWidth={2.5} />
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── STUDENT ─────────────────────────────────────────────── */
 
 function StudentDashboard() {
@@ -60,15 +103,16 @@ function StudentDashboard() {
   const firstName = user.full_name.split(' ')[0];
 
   return (
-    <div className="space-y-10">
-      <Hero
-        eyebrow="Личный кабинет студента"
+    <div className="space-y-8">
+      <HeroCard
+        eyebrow="Личный кабинет"
         greeting={firstName}
         subline="Сегодня — отличный день, чтобы услышать новый язык."
+        cta={next ? { to: `/lessons/${next.id}`, label: 'К следующему уроку' } : undefined}
       />
 
       <section>
-        <SectionHeading title="Этот семестр" />
+        <SectionHeading title="Этот семестр" icon={<TrendingUp size={14} strokeWidth={2} />} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Stat
             label="Посещаемость"
@@ -86,13 +130,11 @@ function StudentDashboard() {
           <Stat
             label="Домашек сдано"
             value={
-              progress.data ? `${progress.data.homework_submitted}/${progress.data.homework_total}` : '—'
-            }
-            hint={
               progress.data
-                ? `${progress.data.homework_graded} оценено`
-                : ''
+                ? `${progress.data.homework_submitted}/${progress.data.homework_total}`
+                : '—'
             }
+            hint={progress.data ? `${progress.data.homework_graded} оценено` : ''}
             accent="gold"
             size="lg"
           />
@@ -100,28 +142,29 @@ function StudentDashboard() {
             label="Средний балл"
             value={progress.data?.avg_score ? progress.data.avg_score.toFixed(1) : '—'}
             hint="по проверенным работам"
+            accent="sage"
             size="lg"
           />
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3 card relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-12 -mr-12 h-40 w-40 rounded-full bg-gold-50 opacity-60" />
+      <section className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3 card-elevated relative overflow-hidden">
+          <div className="blob bg-forest-500 h-48 w-48 -top-8 -right-8 opacity-20" />
           <div className="relative">
             <div className="eyebrow">Ближайший урок</div>
             {next ? (
               <Link to={`/lessons/${next.id}`} className="block group">
-                <h3 className="font-display text-display-lg font-medium text-ink-900 mb-2 text-balance">
+                <h3 className="font-display text-display-md font-extrabold text-ink-900 mb-2 text-balance">
                   {next.title}
                 </h3>
-                <div className="text-sm text-ink-500">
+                <div className="text-sm text-ink-600 num">
                   {formatDateTime(next.scheduled_at)}{' '}
-                  <span className="text-gold-700 font-medium">· {relativeTime(next.scheduled_at)}</span>
+                  <span className="text-gold-700 font-semibold">· {relativeTime(next.scheduled_at)}</span>
                 </div>
-                <div className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-forest-700 group-hover:gap-2 transition-all">
+                <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 group-hover:gap-2 transition-all">
                   Открыть урок
-                  <ArrowUpRight size={14} strokeWidth={2} />
+                  <ArrowUpRight size={14} strokeWidth={2.5} />
                 </div>
               </Link>
             ) : (
@@ -141,14 +184,14 @@ function StudentDashboard() {
           ) : upcoming.length === 0 ? (
             <p className="text-sm text-ink-500">Нет запланированных уроков</p>
           ) : (
-            <ul className="divide-y divide-ink-900/5">
+            <ul className="divide-y divide-paper-300">
               {upcoming.map((l) => (
                 <li key={l.id}>
                   <Link
                     to={`/lessons/${l.id}`}
-                    className="flex items-center justify-between py-2 hover:text-forest-700 transition-colors"
+                    className="flex items-center justify-between gap-2 py-2.5 hover:text-forest-700 transition-colors"
                   >
-                    <span className="text-sm text-ink-700 truncate pr-2">{l.title}</span>
+                    <span className="text-sm text-ink-700 font-medium truncate">{l.title}</span>
                     <span className="text-xs text-ink-400 num whitespace-nowrap">
                       {formatDateTime(l.scheduled_at)}
                     </span>
@@ -164,10 +207,11 @@ function StudentDashboard() {
         <SectionHeading
           title="Домашние задания"
           link={{ to: '/homework', label: 'Все →' }}
-          icon={<PenLine size={14} strokeWidth={1.6} />}
+          icon={<PenLine size={14} strokeWidth={2} />}
         />
         {assignments.isLoading ? (
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <SkeletonCard rows={2} />
             <SkeletonCard rows={2} />
             <SkeletonCard rows={2} />
           </div>
@@ -179,15 +223,15 @@ function StudentDashboard() {
               <Link
                 key={a.id}
                 to="/homework"
-                className="card group hover:border-forest-700 transition-colors"
+                className="card group hover:border-forest-500 hover:shadow-pop transition-all"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-display text-base font-medium text-ink-900 line-clamp-2 text-balance">
+                  <h4 className="font-display text-base font-bold text-ink-900 line-clamp-2 text-balance">
                     {a.title}
                   </h4>
                   <ArrowUpRight
                     size={14}
-                    className="text-ink-300 group-hover:text-forest-700 transition-colors flex-shrink-0"
+                    className="text-ink-300 group-hover:text-forest-600 transition-colors flex-shrink-0"
                   />
                 </div>
                 <div className="mt-3 text-xs text-ink-500">
@@ -222,42 +266,46 @@ function TeacherDashboard() {
     .slice(0, 8);
 
   return (
-    <div className="space-y-10">
-      <Hero
+    <div className="space-y-8">
+      <HeroCard
         eyebrow="Преподаватель"
         greeting={user.full_name.split(' ')[0]}
-        subline="Ваш день в YES Center."
+        subline="Ваш день в YES Center — расписание, журнал и группы под рукой."
       />
 
       <section className="grid grid-cols-3 gap-4">
         <Stat label="Мои группы" value={groups.data?.length ?? '—'} accent="forest" size="lg" />
         <Stat label="Уроков сегодня" value={todayLessons.length} accent="gold" size="lg" />
-        <Stat label="Уроков впереди" value={upcoming.length} size="lg" />
+        <Stat label="Уроков впереди" value={upcoming.length} accent="sage" size="lg" />
       </section>
 
       <section>
-        <SectionHeading title="Сегодня" icon={<CalendarClock size={14} strokeWidth={1.6} />} />
+        <SectionHeading title="Сегодня" icon={<CalendarClock size={14} strokeWidth={2} />} />
         {todayLessons.length === 0 ? (
-          <div className="card-flat text-sm text-ink-500">Уроков сегодня нет — насладитесь паузой.</div>
+          <div className="card-flat text-sm text-ink-500">
+            Уроков сегодня нет — насладитесь паузой ☕
+          </div>
         ) : (
-          <div className="card-bare divide-y divide-ink-900/5">
+          <div className="card-bare divide-y divide-paper-300">
             {todayLessons.map((l) => (
               <Link
                 key={l.id}
                 to={`/lessons/${l.id}`}
-                className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-paper-100 transition-colors group"
+                className="flex items-center justify-between gap-3 px-6 py-4 hover:bg-paper-100 transition-colors group"
               >
                 <div className="min-w-0">
-                  <div className="font-display text-base font-medium text-ink-900 truncate">
+                  <div className="font-display text-base font-bold text-ink-900 truncate">
                     {l.title}
                   </div>
-                  <div className="text-xs text-ink-500 num">{formatDateTime(l.scheduled_at)}</div>
+                  <div className="text-xs text-ink-500 num mt-0.5">
+                    {formatDateTime(l.scheduled_at)}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <LessonStatusPill status={l.status} />
                   <ArrowUpRight
                     size={14}
-                    className="text-ink-300 group-hover:text-forest-700 transition-colors"
+                    className="text-ink-300 group-hover:text-forest-600 transition-colors"
                   />
                 </div>
               </Link>
@@ -270,22 +318,22 @@ function TeacherDashboard() {
         <SectionHeading
           title="Мои группы"
           link={{ to: '/groups', label: 'Все →' }}
-          icon={<Users size={14} strokeWidth={1.6} />}
+          icon={<Users size={14} strokeWidth={2} />}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {(groups.data ?? []).map((g) => (
             <Link
               key={g.id}
               to={`/groups/${g.id}`}
-              className="card group hover:border-forest-700 transition-colors"
+              className="card group hover:border-forest-500 hover:shadow-pop transition-all"
             >
-              <div className="font-display text-sm font-medium text-ink-900 truncate">
+              <div className="font-display text-sm font-bold text-ink-900 truncate">
                 Группа · {g.id.slice(0, 8)}
               </div>
-              <div className="mt-1 text-xs text-ink-500">старт {g.start_date}</div>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs text-forest-700 font-medium group-hover:gap-2 transition-all">
+              <div className="mt-1 text-xs text-ink-500 num">старт {g.start_date}</div>
+              <div className="mt-3 inline-flex items-center gap-1 text-xs text-forest-700 font-semibold group-hover:gap-2 transition-all">
                 Перейти
-                <ArrowUpRight size={12} strokeWidth={2} />
+                <ArrowUpRight size={12} strokeWidth={2.5} />
               </div>
             </Link>
           ))}
@@ -300,21 +348,21 @@ function TeacherDashboard() {
 function ParentDashboard() {
   const user = useAuthStore((s) => s.user)!;
   return (
-    <div className="space-y-10">
-      <Hero
+    <div className="space-y-8">
+      <HeroCard
         eyebrow="Кабинет родителя"
         greeting={user.full_name.split(' ')[0]}
-        subline="Прогресс ваших детей в YES Center."
+        subline="Прогресс ваших детей в YES Center — на одном экране."
       />
 
-      <div className="card relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-16 -mr-16 h-44 w-44 rounded-full bg-forest-50 opacity-50" />
-        <div className="relative max-w-xl">
+      <div className="card-elevated relative overflow-hidden">
+        <div className="blob bg-gold-500 h-48 w-48 -top-8 -right-8 opacity-20" />
+        <div className="relative max-w-2xl">
           <div className="eyebrow">Скоро здесь</div>
-          <h3 className="font-display text-display-md font-medium text-ink-900 mb-3 text-balance">
+          <h3 className="font-display text-display-md font-extrabold text-ink-900 mb-3 text-balance">
             Привязка детей и их прогресс
           </h3>
-          <p className="text-sm text-ink-500 leading-relaxed">
+          <p className="text-sm text-ink-600 leading-relaxed">
             В демо-режиме дети привязаны через сидер. Полный родительский кабинет с прогрессом,
             домашками, оплатой и чатом с преподавателем — в Phase 2.
           </p>
@@ -326,21 +374,23 @@ function ParentDashboard() {
         </div>
       </div>
 
-      <Link to="/notifications" className="card group flex items-center justify-between hover:border-forest-700 transition-colors">
+      <Link
+        to="/notifications"
+        className="card group flex items-center justify-between hover:border-forest-500 hover:shadow-pop transition-all"
+      >
         <div className="flex items-center gap-3">
-          <Mail size={18} strokeWidth={1.6} className="text-forest-700" />
-          <span className="font-display text-base font-medium text-ink-900">Уведомления</span>
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-forest-50 text-forest-600">
+            <Mail size={18} strokeWidth={2} />
+          </div>
+          <span className="font-display text-base font-bold text-ink-900">Уведомления</span>
         </div>
-        <ArrowUpRight
-          size={16}
-          className="text-ink-400 group-hover:text-forest-700 transition-colors"
-        />
+        <ArrowUpRight size={16} className="text-ink-400 group-hover:text-forest-600 transition-colors" />
       </Link>
     </div>
   );
 }
 
-/* ─── ADMIN / METHODIST / MANAGER ─────────────────────────── */
+/* ─── ADMIN ──────────────────────────────────────────────── */
 
 function AdminDashboard() {
   const user = useAuthStore((s) => s.user)!;
@@ -350,29 +400,29 @@ function AdminDashboard() {
   const lessons = useQuery({ queryKey: ['lessons-all'], queryFn: () => fetchLessons() });
 
   return (
-    <div className="space-y-10">
-      <Hero
+    <div className="space-y-8">
+      <HeroCard
         eyebrow="Администрирование"
         greeting={user.full_name.split(' ')[0]}
-        subline="Платформа в цифрах."
+        subline="Платформа в цифрах — филиалы, пользователи, группы и уроки."
       />
 
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Филиалов" value={branches.data?.length ?? '—'} accent="forest" size="lg" />
         <Stat label="Пользователей" value={users.data?.length ?? '—'} size="lg" />
         <Stat label="Групп" value={groups.data?.length ?? '—'} accent="gold" size="lg" />
-        <Stat label="Уроков" value={lessons.data?.length ?? '—'} size="lg" />
+        <Stat label="Уроков" value={lessons.data?.length ?? '—'} accent="sage" size="lg" />
       </section>
 
       <section>
-        <SectionHeading title="Быстрый доступ" icon={<Sparkles size={14} strokeWidth={1.6} />} />
+        <SectionHeading title="Быстрый доступ" icon={<Sparkles size={14} strokeWidth={2} />} />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <QuickLink to="/branches" icon={<Building2 size={16} strokeWidth={1.6} />} label="Филиалы" />
-          <QuickLink to="/courses" icon={<GraduationCap size={16} strokeWidth={1.6} />} label="Курсы" />
-          <QuickLink to="/groups" icon={<Layers size={16} strokeWidth={1.6} />} label="Группы" />
-          <QuickLink to="/users" icon={<Users size={16} strokeWidth={1.6} />} label="Пользователи" />
-          <QuickLink to="/lessons" icon={<CalendarClock size={16} strokeWidth={1.6} />} label="Уроки" />
-          <QuickLink to="/homework" icon={<Headphones size={16} strokeWidth={1.6} />} label="Домашки" />
+          <QuickLink to="/branches" icon={<Building2 size={18} strokeWidth={2} />} label="Филиалы" />
+          <QuickLink to="/courses" icon={<GraduationCap size={18} strokeWidth={2} />} label="Курсы" />
+          <QuickLink to="/groups" icon={<Layers size={18} strokeWidth={2} />} label="Группы" />
+          <QuickLink to="/users" icon={<Users size={18} strokeWidth={2} />} label="Пользователи" />
+          <QuickLink to="/lessons" icon={<CalendarClock size={18} strokeWidth={2} />} label="Уроки" />
+          <QuickLink to="/homework" icon={<PenLine size={18} strokeWidth={2} />} label="Домашки" />
         </div>
       </section>
     </div>
@@ -380,27 +430,6 @@ function AdminDashboard() {
 }
 
 /* ─── shared ──────────────────────────────────────────────── */
-
-function Hero({
-  eyebrow,
-  greeting,
-  subline,
-}: {
-  eyebrow: string;
-  greeting: string;
-  subline: string;
-}) {
-  return (
-    <div className="relative pt-2">
-      <div className="eyebrow">{eyebrow}</div>
-      <h1 className="font-display text-display-xl font-medium tracking-tight text-ink-900 leading-[1.0] text-balance">
-        Здравствуйте,{' '}
-        <span className="italic font-light text-forest-700">{greeting}.</span>
-      </h1>
-      <p className="mt-3 text-ink-500 text-sm max-w-xl">{subline}</p>
-    </div>
-  );
-}
 
 function SectionHeading({
   title,
@@ -414,13 +443,13 @@ function SectionHeading({
   return (
     <div className="flex items-end justify-between mb-4">
       <div className="flex items-center gap-2">
-        {icon && <span className="text-ink-400">{icon}</span>}
-        <h2 className="font-display text-lg font-semibold text-ink-900 tracking-tight">{title}</h2>
+        {icon && <span className="text-forest-600">{icon}</span>}
+        <h2 className="font-display text-xl font-extrabold text-ink-900 tracking-tight">{title}</h2>
       </div>
       {link && (
         <Link
           to={link.to}
-          className="text-xs uppercase tracking-[0.18em] font-semibold text-ink-500 hover:text-forest-700 transition-colors"
+          className="text-xs uppercase tracking-[0.14em] font-bold text-ink-500 hover:text-forest-700 transition-colors"
         >
           {link.label}
         </Link>
@@ -441,12 +470,12 @@ function QuickLink({
   return (
     <Link
       to={to}
-      className="group flex flex-col items-start justify-between gap-3 card hover:border-forest-700 transition-colors"
+      className="group flex flex-col items-start justify-between gap-3 card hover:border-forest-500 hover:shadow-pop transition-all"
     >
-      <div className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-paper-200 text-ink-700 group-hover:bg-forest-700 group-hover:text-paper-50 transition-colors">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-forest-50 text-forest-600 group-hover:bg-forest-600 group-hover:text-white transition-colors">
         {icon}
       </div>
-      <div className="font-medium text-sm text-ink-900">{label}</div>
+      <div className="font-display font-bold text-sm text-ink-900">{label}</div>
     </Link>
   );
 }

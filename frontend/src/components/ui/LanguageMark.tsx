@@ -12,15 +12,16 @@ const LETTER: Record<Language, string> = {
   ko: '한',
 };
 
+// Each language gets a distinct, vibrant tone — feels multicultural without flags.
 const TONE: Record<Language, string> = {
-  en: 'bg-forest-50 text-forest-700 border-forest-100',
-  de: 'bg-ink-800 text-paper-50 border-ink-900',
-  fr: 'bg-terra-50 text-terra-700 border-terra-50',
-  it: 'bg-gold-50 text-gold-700 border-gold-100',
-  es: 'bg-paper-200 text-ink-800 border-paper-300',
-  zh: 'bg-ink-900 text-gold-300 border-ink-800',
-  ja: 'bg-paper-50 text-ink-900 border-ink-900',
-  ko: 'bg-sage-50 text-sage-700 border-sage-50',
+  en: 'bg-gradient-to-br from-forest-500 to-forest-700 text-white',
+  de: 'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
+  fr: 'bg-gradient-to-br from-gold-500 to-gold-700 text-white',
+  it: 'bg-gradient-to-br from-sage-500 to-sage-700 text-white',
+  es: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white',
+  zh: 'bg-gradient-to-br from-rose-500 to-red-600 text-white',
+  ja: 'bg-gradient-to-br from-paper-50 to-paper-200 text-ink-900 border border-paper-300',
+  ko: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white',
 };
 
 interface Props {
@@ -30,11 +31,16 @@ interface Props {
 }
 
 export function LanguageMark({ language, size = 'md', className }: Props) {
-  const dim = size === 'lg' ? 'h-12 w-12 text-xl' : size === 'sm' ? 'h-7 w-7 text-[11px]' : 'h-9 w-9 text-sm';
+  const dim =
+    size === 'lg'
+      ? 'h-14 w-14 text-2xl rounded-2xl'
+      : size === 'sm'
+      ? 'h-8 w-8 text-xs rounded-lg'
+      : 'h-11 w-11 text-base rounded-xl';
   return (
     <span
       className={clsx(
-        'inline-flex items-center justify-center rounded font-display font-semibold border tracking-tight',
+        'inline-flex items-center justify-center font-display font-bold tracking-tight shadow-soft',
         TONE[language],
         dim,
         className,

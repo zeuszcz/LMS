@@ -1,9 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { clsx } from 'clsx';
+import { Bell, LogOut, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { fetchNotifications } from '@/api/notifications';
-import { clsx } from 'clsx';
-import { Bell, LogOut } from 'lucide-react';
 import type { UserRole } from '@/types';
 
 interface NavItem {
@@ -38,6 +38,23 @@ function visibleFor(item: NavItem, roles: UserRole[], superuser: boolean): boole
   return roles.some((r) => item.roles.includes(r));
 }
 
+function Wordmark({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const wrap = size === 'sm' ? 'gap-1.5' : 'gap-2';
+  const dot = size === 'sm' ? 'h-1.5 w-1.5' : 'h-2 w-2';
+  const text = size === 'sm' ? 'text-base' : 'text-lg';
+  return (
+    <span className={clsx('inline-flex items-center', wrap)}>
+      <span className={clsx('font-display font-extrabold tracking-tight text-ink-900', text)}>
+        YES
+      </span>
+      <span className={clsx('rounded-full bg-gold-500', dot)} aria-hidden />
+      <span className={clsx('font-display font-medium tracking-tight text-ink-500', text)}>
+        LMS
+      </span>
+    </span>
+  );
+}
+
 export function Layout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -59,88 +76,23 @@ export function Layout() {
   );
   const primaryRole = (user?.roles?.[0] ?? (user?.is_superuser ? 'admin' : null)) as UserRole | null;
 
+  const initials = (user?.full_name ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-20 bg-paper-100/85 backdrop-blur border-b border-ink-900/10">
-        <div className="max-w-[1200px] mx-auto px-6">
-          {/* Tiny utility bar */}
-          <div className="flex items-center justify-between py-1.5 text-[10px] uppercase tracking-[0.2em] text-ink-400 font-semibold">
-            <span>YES Center · Linguistic platform</span>
-            <span className="hidden sm:inline">Москва · МО · Владимир</span>
-          </div>
+    <div className="min-h-screen flex flex-col bg-paper-100">
+      <header className="sticky top-0 z-20 bg-paper-50/85 backdrop-blur border-b border-paper-300">
+        <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between gap-6">
+          <NavLink to="/" className="flex-shrink-0">
+            <Wordmark />
+          </NavLink>
 
-          {/* Main bar */}
-          <div className="flex items-center justify-between gap-6 py-3 border-t border-ink-900/10">
-            <NavLink to="/" className="group flex items-baseline gap-2">
-              <span className="font-display text-2xl font-semibold tracking-tight text-ink-900">
-                YES
-              </span>
-              <span className="font-display text-2xl text-gold-500 leading-none" aria-hidden>
-                ·
-              </span>
-              <span className="font-display text-2xl font-light italic tracking-tight text-ink-700 group-hover:text-forest-700 transition-colors">
-                LMS
-              </span>
-            </NavLink>
-
-            <nav className="hidden md:flex items-center gap-1">
-              {items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.to === '/'}
-                  className={({ isActive }) =>
-                    clsx(
-                      'relative px-3 py-1.5 text-sm tracking-tight transition-colors',
-                      isActive ? 'text-ink-900 font-medium' : 'text-ink-500 hover:text-ink-900',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {item.label}
-                      {isActive && (
-                        <span className="absolute -bottom-1 left-3 right-3 h-px bg-gold-500" aria-hidden />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-1.5">
-              <NavLink
-                to="/notifications"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-600 hover:text-ink-900 hover:bg-paper-200 transition-colors"
-                aria-label="Уведомления"
-              >
-                <Bell size={16} strokeWidth={1.6} />
-                {notif && notif.unread > 0 && (
-                  <span className="absolute top-1.5 right-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-terra-500 ring-2 ring-paper-100" />
-                )}
-              </NavLink>
-              <div className="hidden lg:flex items-center pl-3 border-l border-ink-900/10 ml-1">
-                <div className="text-right">
-                  <div className="text-sm text-ink-900 font-medium leading-tight">
-                    {user?.full_name?.split(' ')[0] ?? 'Гость'}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-ink-400">
-                    {primaryRole ? ROLE_LABEL[primaryRole] : 'Сессия'}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={onLogout}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-500 hover:text-terra-500 hover:bg-paper-200 transition-colors"
-                aria-label="Выйти"
-              >
-                <LogOut size={16} strokeWidth={1.6} />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile nav row */}
-          <nav className="md:hidden flex items-center gap-1 overflow-x-auto pb-2 -mx-1 px-1">
+          <nav className="hidden md:flex items-center gap-1">
             {items.map((item) => (
               <NavLink
                 key={item.to}
@@ -148,10 +100,66 @@ export function Layout() {
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   clsx(
-                    'whitespace-nowrap px-3 py-1 rounded-full text-xs tracking-tight border transition-colors',
+                    'px-3.5 py-1.5 rounded-full text-sm font-medium tracking-tight transition-colors',
                     isActive
-                      ? 'bg-ink-900 text-paper-50 border-ink-900'
-                      : 'bg-paper-50 text-ink-700 border-paper-300 hover:border-ink-700',
+                      ? 'bg-forest-50 text-forest-700'
+                      : 'text-ink-600 hover:text-ink-900 hover:bg-paper-200',
+                  )
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1.5">
+            <NavLink
+              to="/notifications"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-600 hover:text-ink-900 hover:bg-paper-200 transition-colors"
+              aria-label="Уведомления"
+            >
+              <Bell size={18} strokeWidth={1.8} />
+              {notif && notif.unread > 0 && (
+                <span className="absolute top-1.5 right-1.5 inline-flex h-2 w-2 rounded-full bg-gold-500 ring-2 ring-paper-50" />
+              )}
+            </NavLink>
+            <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-paper-300">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-500 to-forest-700 text-white text-xs font-bold">
+                {initials || <Sparkles size={14} />}
+              </div>
+              <div className="hidden lg:block leading-tight">
+                <div className="text-sm font-semibold text-ink-900">
+                  {user?.full_name?.split(' ')[0] ?? 'Гость'}
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-400">
+                  {primaryRole ? ROLE_LABEL[primaryRole] : 'Сессия'}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-500 hover:text-terra-500 hover:bg-paper-200 transition-colors"
+              aria-label="Выйти"
+            >
+              <LogOut size={16} strokeWidth={1.8} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile nav */}
+        <div className="md:hidden border-t border-paper-300">
+          <nav className="max-w-[1200px] mx-auto flex items-center gap-1.5 overflow-x-auto px-4 py-2.5">
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/'}
+                className={({ isActive }) =>
+                  clsx(
+                    'whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-semibold tracking-tight transition-colors',
+                    isActive
+                      ? 'bg-forest-600 text-white'
+                      : 'bg-paper-100 text-ink-700 hover:bg-paper-200',
                   )
                 }
               >
@@ -168,13 +176,11 @@ export function Layout() {
         </div>
       </main>
 
-      <footer className="border-t border-ink-900/10 bg-paper-100">
-        <div className="max-w-[1200px] mx-auto px-6 py-6 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <div className="font-display text-sm text-ink-500">
-            <span className="italic">«Вы становитесь языком, на котором говорите.»</span>
-          </div>
-          <div className="text-[11px] uppercase tracking-[0.2em] text-ink-400 font-semibold">
-            © 2026 · YES Center
+      <footer className="mt-20 border-t border-paper-300 bg-paper-50">
+        <div className="max-w-[1200px] mx-auto px-6 py-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <Wordmark size="sm" />
+          <div className="text-xs text-ink-500">
+            © 2026 YES Center · Лингвистический центр · Москва, МО, Владимир
           </div>
         </div>
       </footer>
