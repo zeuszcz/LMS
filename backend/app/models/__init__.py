@@ -17,6 +17,7 @@ from app.models.billing import (
 )
 from app.models.branch import Branch
 from app.models.course import AgeGroup, CefrLevel, Course, Language
+from app.models.course_content import CourseFeature, CourseModule, CourseReview
 from app.models.group import Enrollment, Group, GroupMode, GroupStatus
 from app.models.lesson import Attendance, AttendanceStatus, LessonInstance, LessonStatus
 from app.models.notification import (
@@ -36,37 +37,33 @@ from app.models.user import (
 
 __all__ = [
     "Base",
-    # Identity
     "User",
     "UserRole",
     "UserRoleAssignment",
     "StudentProfile",
     "TeacherProfile",
     "ParentLink",
-    # Org
     "Branch",
-    # Catalog
     "Course",
     "Language",
     "CefrLevel",
     "AgeGroup",
-    # Groups
+    "CourseModule",
+    "CourseFeature",
+    "CourseReview",
     "Group",
     "GroupMode",
     "GroupStatus",
     "Enrollment",
     "ScheduleSlot",
-    # Lessons
     "LessonInstance",
     "LessonStatus",
     "Attendance",
     "AttendanceStatus",
-    # Homework
     "Assignment",
     "AssignmentKind",
     "Submission",
     "SubmissionStatus",
-    # Billing
     "PricingPlan",
     "PricingPlanKind",
     "Subscription",
@@ -75,10 +72,8 @@ __all__ = [
     "PaymentStatus",
     "LessonCreditLedger",
     "LedgerReason",
-    # Notifications
     "NotificationOutbox",
     "NotificationChannel",
     "NotificationStatus",
-    # Audit
     "AuditLog",
 ]

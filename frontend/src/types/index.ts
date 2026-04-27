@@ -62,6 +62,49 @@ export interface CourseList {
   total: number;
 }
 
+export interface CourseModule {
+  id: string;
+  order_index: number;
+  title: string;
+  summary: string | null;
+  lessons_count: number;
+}
+
+export interface CourseFeature {
+  id: string;
+  icon: string | null;
+  title: string;
+  description: string | null;
+  order_index: number;
+}
+
+export interface CourseReview {
+  id: string;
+  author_name: string;
+  rating: number;
+  body: string;
+  created_at: string;
+}
+
+export interface GroupForCourse {
+  id: string;
+  branch_id: string | null;
+  teacher_id: string | null;
+  mode: string;
+  start_date: string;
+  max_students: number;
+  enrolled_count: number;
+}
+
+export interface CourseDetail extends Course {
+  modules: CourseModule[];
+  features: CourseFeature[];
+  reviews: CourseReview[];
+  avg_rating: number | null;
+  reviews_count: number;
+  available_groups: GroupForCourse[];
+}
+
 export interface ScheduleSlot {
   id: string;
   group_id: string;

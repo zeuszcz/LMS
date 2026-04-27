@@ -1,14 +1,20 @@
 import { api } from './client';
-import type { CourseList } from '@/types';
+import type { CourseDetail, CourseList } from '@/types';
 
 export async function fetchCourses(params: {
   language?: string;
   level?: string;
   age_group?: string;
   only_published?: boolean;
+  search?: string;
   limit?: number;
   offset?: number;
 } = {}): Promise<CourseList> {
   const { data } = await api.get<CourseList>('/api/courses/', { params });
+  return data;
+}
+
+export async function fetchCourse(id: string): Promise<CourseDetail> {
+  const { data } = await api.get<CourseDetail>(`/api/courses/${id}`);
   return data;
 }

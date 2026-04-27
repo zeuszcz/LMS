@@ -15,6 +15,7 @@ from app.models import (  # noqa: F401
     billing,
     branch,
     course,
+    course_content,
     group,
     lesson,
     notification,

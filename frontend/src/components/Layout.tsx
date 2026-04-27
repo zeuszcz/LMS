@@ -123,7 +123,11 @@ export function Layout() {
                 <span className="absolute top-1.5 right-1.5 inline-flex h-2 w-2 rounded-full bg-gold-500 ring-2 ring-paper-50" />
               )}
             </NavLink>
-            <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-paper-300">
+            <NavLink
+              to="/profile"
+              className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-paper-300 rounded-r-xl hover:bg-paper-200 px-2 py-1 -mr-1 transition-colors"
+              title="Профиль"
+            >
               <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-forest-500 to-forest-700 text-white text-xs font-bold">
                 {initials || <Sparkles size={14} />}
               </div>
@@ -135,7 +139,7 @@ export function Layout() {
                   {primaryRole ? ROLE_LABEL[primaryRole] : 'Сессия'}
                 </div>
               </div>
-            </div>
+            </NavLink>
             <button
               onClick={onLogout}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-500 hover:text-terra-500 hover:bg-paper-200 transition-colors"
