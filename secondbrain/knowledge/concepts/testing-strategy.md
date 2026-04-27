@@ -87,14 +87,24 @@ What to test, where, with which tooling. Targets: 70% backend line coverage,
 - `db_session` — scoped per test, in-memory SQLite (or Postgres for integration).
 - `client` — `AsyncClient` with `get_db` dependency override.
 
-Helper factories live in `tests/factories.py` (Phase 1 week 4):
+Helper factories live in `tests/factories.py`:
 ```python
-async def make_user(db, *, role=UserRole.student, **kwargs) -> User: ...
-async def make_course(db, *, language=Language.en, **kwargs) -> Course: ...
-async def make_group(db, course, teacher, **kwargs) -> Group: ...
+make_user(db, *, email, role, branch_id, is_superuser, password) -> User
+make_branch(db, name) -> Branch
+make_course(db, *, level) -> Course
+make_group(db, *, course, branch, teacher) -> Group
+enroll(db, group, student) -> Enrollment
+make_lesson(db, group, *, sequence, in_past) -> LessonInstance
+login_token(client, email, password) -> str
 ```
 
 Avoid inline `db.add(User(...))` in tests beyond 1-2 cases — promote to factory.
+
+### Email validation gotcha
+
+Pydantic `EmailStr` rejects RFC 6761 reserved TLDs: `.local`, `.test`, `.invalid`,
+`.example`. Use `@*.example.com` (subdomains of example.com are fine) for test
+fixtures and seeds. Production seeds use `.ru` / `.com`.
 
 ## Determinism rules
 

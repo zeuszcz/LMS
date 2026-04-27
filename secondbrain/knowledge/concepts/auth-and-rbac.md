@@ -48,15 +48,32 @@ support logout-all-sessions and silent invalidation on password change.
 
 ## Authorization
 
-Two dependencies in `app/core/auth.py`:
+Two layers:
+
+**Coarse-grained, in `app/core/auth.py`:**
 
 - `get_current_user` — required, raises 401 if missing/invalid token.
-- `require_roles(*allowed)` — factory, raises 403 if user lacks any of `allowed`.
+- `require_roles(*allowed)` — factory, raises 403 if user lacks any of `allowed`. Use this for endpoints whose access is purely role-based with no branch nuance.
 
-Usage:
 ```python
 @router.post("/", dependencies=[Depends(require_roles(UserRole.admin, UserRole.methodist))])
 async def create_course(...): ...
+```
+
+**Fine-grained, in `app/services/permissions.py`:**
+
+Helpers that consider branch scoping and resource ownership:
+- `is_admin(user)`, `is_methodist(user, branch_id=None)`, `is_branch_manager(user, branch_id)`, `is_teacher(user)`, `is_student(user)`, `is_parent(user)`
+- `can_manage_group(user, group_branch_id)` — admin / methodist / branch_manager-of-that-branch
+- `can_record_attendance(user, group_teacher_id, group_branch_id)` — teacher of group + methodist of branch + admin
+- `can_grade(...)` — same as record_attendance
+- `can_view_student(user, student_id, parent_links: set[UUID])` — self / linked parent / staff
+
+Use this layer when the answer depends on **the resource**, not just the role. Example: a teacher can record attendance for *their own* group but not for a colleague's. Calling `require_roles(UserRole.teacher)` would let through the wrong teacher; `can_record_attendance(...)` keeps the check honest.
+
+```python
+if not permissions.can_manage_group(user, group.branch_id):
+    raise HTTPException(403, "Forbidden")
 ```
 
 ## Role matrix

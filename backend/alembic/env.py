@@ -8,8 +8,19 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.models.base import Base
-# Import all models so Base.metadata is populated.
-from app.models import user, branch, course, group, lesson  # noqa: F401
+# Import the models package so Base.metadata is populated for all models.
+from app.models import (  # noqa: F401
+    assignment,
+    audit,
+    billing,
+    branch,
+    course,
+    group,
+    lesson,
+    notification,
+    schedule,
+    user,
+)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

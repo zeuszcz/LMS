@@ -71,12 +71,17 @@ Enforced in `lesson_service.record_attendance`.
 
 ## Journal close — invariants
 
-1. Teacher cannot close lesson with `attendance.status = NULL` for any enrolled student.
-2. Once closed, attendance is editable only by methodist within 48h, audited.
+1. Teacher cannot close lesson with missing attendance for any enrolled student.
+   Implementation: `app/routers/lessons.py:close_lesson` computes
+   `enrolled_ids - payload_ids`; non-empty diff returns 400. Test:
+   `tests/test_lessons.py::test_close_lesson_requires_full_attendance`.
+2. Once closed, attendance is editable only by methodist within 48h, audited (Phase 2).
 3. Closing emits exactly one parent-summary notification per student (idempotency
-   key `lesson_id + student_id + 'parent_summary'`).
+   key `lesson_id + student_id + 'parent_summary'`) — Phase 2.
 4. Credit debit happens inside the same DB transaction as `actual_ended_at`
-   write — both succeed or both fail.
+   write — both succeed or both fail (Phase 2 when ledger debits land).
+5. Closing is idempotent on a 409: re-closing a lesson in `finished` status returns
+   conflict instead of double-side-effects.
 
 ## Why we don't allow ad-hoc rescheduling in MVP
 
