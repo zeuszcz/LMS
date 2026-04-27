@@ -33,7 +33,7 @@ const STATUS_TONE: Record<AttendanceStatus, string> = {
 
 export function LessonDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const user = useAuthStore((s) => s.user)!;
+  const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
 
   const lesson = useQuery({
@@ -58,12 +58,13 @@ export function LessonDetailPage() {
   });
   const users = useQuery({ queryKey: ['users-min'], queryFn: () => fetchUsers({ limit: 200 }) });
 
-  const isTeacherOfGroup = group.data && user.id === group.data.teacher_id;
+  const isTeacherOfGroup = !!user && group.data && user.id === group.data.teacher_id;
   const canEdit =
-    user.is_superuser ||
-    user.roles.includes('admin') ||
-    user.roles.includes('methodist') ||
-    isTeacherOfGroup;
+    !!user &&
+    (user.is_superuser ||
+      user.roles.includes('admin') ||
+      user.roles.includes('methodist') ||
+      !!isTeacherOfGroup);
 
   const studentRows = useMemo(() => {
     const userById = new Map((users.data ?? []).map((u) => [u.id, u]));

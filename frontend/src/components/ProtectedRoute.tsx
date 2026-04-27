@@ -25,12 +25,20 @@ export function ProtectedRoute({ children }: Props) {
   }, [data, setUser]);
 
   if (!accessToken) return <Navigate to="/login" replace />;
-  if (isLoading && !user) {
+  if (isError) return <Navigate to="/login" replace />;
+
+  // Block children until store actually has the user — avoids race where
+  // pages dereference user.* during the render cycle that sets it.
+  if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center text-slate-500">Загрузка…</div>
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-ink-500 text-sm flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-forest-500 animate-pulse" />
+          Загрузка{isLoading ? '…' : ''}
+        </div>
+      </div>
     );
   }
-  if (isError) return <Navigate to="/login" replace />;
 
   return <>{children}</>;
 }

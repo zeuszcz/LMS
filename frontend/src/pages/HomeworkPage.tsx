@@ -16,8 +16,8 @@ import { SubmissionPill } from '@/components/ui/StatusPill';
 import type { Assignment, Submission } from '@/types';
 
 export function HomeworkPage() {
-  const user = useAuthStore((s) => s.user)!;
-  const isStudent = user.roles.includes('student') && !user.roles.includes('teacher');
+  const user = useAuthStore((s) => s.user);
+  const isStudent = !!user && user.roles.includes('student') && !user.roles.includes('teacher');
 
   const assignments = useQuery({
     queryKey: ['hw', isStudent],
