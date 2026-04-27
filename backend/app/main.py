@@ -11,6 +11,7 @@ from app.routers import (
     billing,
     branches,
     courses,
+    enrollment_requests,
     groups,
     health,
     lessons,
@@ -57,6 +58,11 @@ app.include_router(assignments.router, prefix="/api/assignments", tags=["assignm
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(progress.router, prefix="/api/progress", tags=["progress"])
+app.include_router(
+    enrollment_requests.router,
+    prefix="/api/enrollment-requests",
+    tags=["enrollment-requests"],
+)
 
 
 @app.get("/")

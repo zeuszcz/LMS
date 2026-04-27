@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { to: '/homework', label: 'Домашки', roles: ['student', 'teacher', 'methodist', 'admin'] },
   { to: '/branches', label: 'Филиалы', roles: ['admin', 'methodist', 'branch_manager'] },
   { to: '/users', label: 'Пользователи', roles: ['admin', 'branch_manager'] },
+  { to: '/admin', label: 'Админка', roles: ['admin', 'methodist', 'branch_manager'] },
 ];
 
 const ROLE_LABEL: Record<UserRole, string> = {

@@ -2,12 +2,15 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUpRight,
+  BookOpen,
   Building2,
   CalendarClock,
+  Clock,
   GraduationCap,
   Layers,
   Mail,
   PenLine,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   Users,
@@ -19,8 +22,10 @@ import { fetchProgress } from '@/api/progress';
 import { fetchGroups } from '@/api/groups';
 import { fetchBranches } from '@/api/branches';
 import { fetchUsers } from '@/api/users';
+import { fetchMyActiveEnrollments, fetchRequests } from '@/api/enrollment_requests';
 import { Stat } from '@/components/ui/Stat';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
+import { LanguageMark } from '@/components/ui/LanguageMark';
 import { LessonStatusPill } from '@/components/ui/StatusPill';
 import { formatDateTime, relativeTime } from '@/lib/format';
 
@@ -91,6 +96,11 @@ function StudentDashboard() {
     queryFn: () => fetchAssignments({ student_only: true }),
   });
   const progress = useQuery({ queryKey: ['progress', user.id], queryFn: () => fetchProgress(user.id) });
+  const activeEnrollments = useQuery({
+    queryKey: ['active-enrollments'],
+    queryFn: fetchMyActiveEnrollments,
+  });
+  const myRequests = useQuery({ queryKey: ['my-requests'], queryFn: () => fetchRequests() });
 
   const upcoming = (lessons.data ?? [])
     .filter((l) => new Date(l.scheduled_at) >= new Date())
@@ -101,6 +111,8 @@ function StudentDashboard() {
     .slice(0, 5);
 
   const firstName = user.full_name.split(' ')[0];
+  const myCourses = activeEnrollments.data ?? [];
+  const pendingReqs = (myRequests.data ?? []).filter((r) => r.status === 'pending');
 
   return (
     <div className="space-y-8">
@@ -110,6 +122,59 @@ function StudentDashboard() {
         subline="Сегодня — отличный день, чтобы услышать новый язык."
         cta={next ? { to: `/lessons/${next.id}`, label: 'К следующему уроку' } : undefined}
       />
+
+      {(myCourses.length > 0 || pendingReqs.length > 0) && (
+        <section>
+          <SectionHeading title="Мои курсы" icon={<BookOpen size={14} strokeWidth={2} />} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myCourses.map((e) => (
+              <Link
+                key={e.enrollment_id}
+                to={`/lessons?group_id=${e.group_id}`}
+                className="card-elevated group hover:border-forest-500 hover:shadow-pop transition-all flex flex-col"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <LanguageMark language={e.language} size="lg" />
+                  <span className="pill-sage font-semibold">
+                    <ShieldCheck size={10} strokeWidth={2.5} /> Активен
+                  </span>
+                </div>
+                <h3 className="font-display text-base font-extrabold text-ink-900 mt-4 leading-tight text-balance">
+                  {e.course_title}
+                </h3>
+                <div className="text-xs text-ink-500 mt-1">
+                  Уровень {e.level} · с {new Date(e.started_at).toLocaleDateString('ru-RU')}
+                </div>
+                <div className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-forest-700 group-hover:gap-2.5 transition-all">
+                  Открыть уроки <ArrowUpRight size={12} strokeWidth={2.5} />
+                </div>
+              </Link>
+            ))}
+            {pendingReqs.map((r) => (
+              <div key={r.id} className="card border-dashed flex flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gold-50 text-gold-700 flex-shrink-0">
+                    <Clock size={18} strokeWidth={2} />
+                  </div>
+                  <span className="pill-gold font-semibold">Ожидает</span>
+                </div>
+                <h3 className="font-display text-base font-extrabold text-ink-900 mt-4 leading-tight text-balance">
+                  Заявка на рассмотрении
+                </h3>
+                <div className="text-xs text-ink-500 mt-1">
+                  Подана {formatDateTime(r.created_at)}
+                </div>
+                {r.note && (
+                  <p className="mt-3 text-sm text-ink-600 italic line-clamp-3">«{r.note}»</p>
+                )}
+                <div className="mt-auto pt-4 text-xs text-ink-400">
+                  Методист рассмотрит заявку в ближайший час.
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <SectionHeading title="Этот семестр" icon={<TrendingUp size={14} strokeWidth={2} />} />

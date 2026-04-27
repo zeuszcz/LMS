@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +20,7 @@ import {
 import { fetchCourse } from '@/api/courses';
 import { fetchBranches } from '@/api/branches';
 import { fetchUsers } from '@/api/users';
+import { createRequest, fetchRequests } from '@/api/enrollment_requests';
 import { LanguageMark } from '@/components/ui/LanguageMark';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Rating } from '@/components/ui/Rating';
@@ -40,6 +41,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const course = useQuery({
     queryKey: ['course', id],
     queryFn: () => fetchCourse(id!),
@@ -47,6 +49,28 @@ export function CourseDetailPage() {
   });
   const branches = useQuery({ queryKey: ['branches-all'], queryFn: fetchBranches });
   const users = useQuery({ queryKey: ['users-min'], queryFn: () => fetchUsers({ limit: 200 }) });
+  const myRequests = useQuery({
+    queryKey: ['my-requests'],
+    queryFn: () => fetchRequests(),
+  });
+
+  const enrollMutation = useMutation({
+    mutationFn: ({ groupId, note }: { groupId: string; note?: string }) =>
+      createRequest(groupId, note),
+    onSuccess: () => {
+      toast(
+        'success',
+        'Заявка отправлена',
+        'Методист рассмотрит заявку и свяжется с вами в течение часа.',
+      );
+      qc.invalidateQueries({ queryKey: ['my-requests'] });
+      qc.invalidateQueries({ queryKey: ['active-enrollments'] });
+    },
+    onError: (err: { response?: { data?: { detail?: string } } }) => {
+      const detail = err?.response?.data?.detail ?? 'Не удалось подать заявку';
+      toast('error', 'Ошибка', detail);
+    },
+  });
 
   if (course.isLoading) {
     return (
@@ -69,14 +93,21 @@ export function CourseDetailPage() {
   const branchById = new Map((branches.data ?? []).map((b) => [b.id, b]));
   const userById = new Map((users.data ?? []).map((u) => [u.id, u]));
 
+  const requestStatusByGroup = new Map(
+    (myRequests.data ?? []).map((r) => [r.group_id, r.status]),
+  );
+
   const onEnrollClick = (group: GroupForCourse) => {
-    toast(
-      'success',
-      'Заявка отправлена',
-      `Запись в группу принята. Методист филиала ${
-        group.branch_id ? branchById.get(group.branch_id)?.name ?? '' : 'онлайн'
-      } свяжется в течение часа.`,
-    );
+    const existing = requestStatusByGroup.get(group.id);
+    if (existing === 'pending') {
+      toast('info', 'Заявка уже подана', 'Ждём решения методиста.');
+      return;
+    }
+    if (existing === 'approved') {
+      toast('info', 'Вы уже зачислены', 'Курс активен — откройте «Мои уроки».');
+      return;
+    }
+    enrollMutation.mutate({ groupId: group.id });
   };
 
   const onTrialLessonClick = () => {
@@ -221,7 +252,9 @@ export function CourseDetailPage() {
                 group={g}
                 branchName={g.branch_id ? branchById.get(g.branch_id)?.name : undefined}
                 teacherName={g.teacher_id ? userById.get(g.teacher_id)?.full_name : undefined}
+                requestStatus={requestStatusByGroup.get(g.id)}
                 onEnroll={() => onEnrollClick(g)}
+                pending={enrollMutation.isPending}
               />
             ))}
           </div>
@@ -393,11 +426,15 @@ function GroupCard({
   branchName,
   teacherName,
   onEnroll,
+  requestStatus,
+  pending,
 }: {
   group: GroupForCourse;
   branchName?: string;
   teacherName?: string;
   onEnroll: () => void;
+  requestStatus?: string;
+  pending?: boolean;
 }) {
   const seatsLeft = group.max_students - group.enrolled_count;
   const fillPct = Math.min(100, Math.round((group.enrolled_count / group.max_students) * 100));
@@ -443,21 +480,35 @@ function GroupCard({
         </div>
       </div>
 
-      <button
-        onClick={onEnroll}
-        disabled={seatsLeft <= 0}
-        className={
-          seatsLeft <= 0
-            ? 'btn-secondary mt-5 w-full disabled:opacity-50'
-            : 'btn-primary mt-5 w-full'
-        }
-      >
-        {seatsLeft <= 0 ? 'Группа набрана' : (
-          <>
-            Записаться <ArrowRight size={14} strokeWidth={2.5} />
-          </>
-        )}
-      </button>
+      {requestStatus === 'approved' ? (
+        <Link to="/" className="btn-primary mt-5 w-full">
+          Открыть кабинет <ArrowRight size={14} strokeWidth={2.5} />
+        </Link>
+      ) : requestStatus === 'pending' ? (
+        <button disabled className="btn-secondary mt-5 w-full">
+          Заявка на рассмотрении
+        </button>
+      ) : requestStatus === 'rejected' ? (
+        <button onClick={onEnroll} disabled={pending || seatsLeft <= 0} className="btn-secondary mt-5 w-full">
+          Подать заявку снова
+        </button>
+      ) : (
+        <button
+          onClick={onEnroll}
+          disabled={pending || seatsLeft <= 0}
+          className={
+            seatsLeft <= 0
+              ? 'btn-secondary mt-5 w-full disabled:opacity-50'
+              : 'btn-primary mt-5 w-full'
+          }
+        >
+          {seatsLeft <= 0 ? 'Группа набрана' : pending ? 'Отправка…' : (
+            <>
+              Записаться <ArrowRight size={14} strokeWidth={2.5} />
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }

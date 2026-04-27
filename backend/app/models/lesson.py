@@ -42,6 +42,9 @@ class LessonInstance(Base, UUIDPKMixin, TimestampMixin):
         Enum(LessonStatus, name="lesson_status"), default=LessonStatus.planned, nullable=False
     )
     notes_for_methodist: Mapped[str | None] = mapped_column(String(4000), nullable=True)
+    # Markdown body shown to students in the lesson learning view
+    content_md: Mapped[str | None] = mapped_column(String(20000), nullable=True)
+    summary: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class Attendance(Base, TimestampMixin):

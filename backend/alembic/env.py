@@ -16,6 +16,7 @@ from app.models import (  # noqa: F401
     branch,
     course,
     course_content,
+    enrollment_request,
     group,
     lesson,
     notification,

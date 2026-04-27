@@ -173,7 +173,25 @@ export function LessonDetailPage() {
         )}
       </div>
 
-      {/* Attendance summary */}
+      {/* Lesson summary tagline */}
+      {lesson.data.summary && (
+        <div className="text-base text-ink-600 italic max-w-3xl text-pretty leading-relaxed">
+          {lesson.data.summary}
+        </div>
+      )}
+
+      {/* Lesson learning content (markdown body) */}
+      {lesson.data.content_md && (
+        <div className="card-elevated relative overflow-hidden">
+          <div className="blob bg-forest-500 h-48 w-48 -top-8 -right-8 opacity-20" />
+          <div className="relative">
+            <div className="eyebrow">Материал урока</div>
+            <LessonMarkdown content={lesson.data.content_md} />
+          </div>
+        </div>
+      )}
+
+      {/* Attendance summary (teacher / methodist view) */}
       {!isFinished && studentRows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <SummaryTile label="Был" count={counts.present} accent="sage" />
@@ -328,6 +346,121 @@ export function LessonDetailPage() {
       )}
     </div>
   );
+}
+
+/** Lightweight markdown → JSX renderer (no deps). Supports # ## ###, bold,
+ * italic, bullet lists, blockquotes, tables, and code-fences as <pre>.
+ * Good enough for lesson body that we author ourselves. */
+function LessonMarkdown({ content }: { content: string }) {
+  const lines = content.split(/\r?\n/);
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  const inline = (s: string): React.ReactNode => {
+    // bold **x** then italic *x*
+    const parts: React.ReactNode[] = [];
+    const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(s)) !== null) {
+      if (m.index > last) parts.push(s.slice(last, m.index));
+      const tok = m[0];
+      if (tok.startsWith('**')) parts.push(<strong key={parts.length} className="text-ink-900 font-bold">{tok.slice(2, -2)}</strong>);
+      else if (tok.startsWith('`')) parts.push(<code key={parts.length} className="font-mono text-xs bg-paper-200 text-ink-800 px-1.5 py-0.5 rounded">{tok.slice(1, -1)}</code>);
+      else parts.push(<em key={parts.length} className="text-ink-700">{tok.slice(1, -1)}</em>);
+      last = m.index + tok.length;
+    }
+    if (last < s.length) parts.push(s.slice(last));
+    return parts;
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) { i++; continue; }
+
+    if (line.startsWith('### ')) {
+      out.push(<h4 key={key++} className="font-display text-base font-bold text-ink-900 mt-5 mb-2">{inline(line.slice(4))}</h4>);
+      i++;
+      continue;
+    }
+    if (line.startsWith('## ')) {
+      out.push(<h3 key={key++} className="font-display text-lg font-extrabold text-ink-900 mt-6 mb-2">{inline(line.slice(3))}</h3>);
+      i++;
+      continue;
+    }
+    if (line.startsWith('# ')) {
+      out.push(<h2 key={key++} className="font-display text-xl font-extrabold text-ink-900 mt-7 mb-3">{inline(line.slice(2))}</h2>);
+      i++;
+      continue;
+    }
+    if (line.startsWith('> ')) {
+      const buf: string[] = [];
+      while (i < lines.length && lines[i].startsWith('> ')) { buf.push(lines[i].slice(2)); i++; }
+      out.push(
+        <blockquote key={key++} className="border-l-4 border-forest-500 bg-forest-50/50 pl-4 py-2 my-3 italic text-ink-700">
+          {buf.map((b, j) => <div key={j}>{inline(b)}</div>)}
+        </blockquote>,
+      );
+      continue;
+    }
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      const items: string[] = [];
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        items.push(lines[i].slice(2));
+        i++;
+      }
+      out.push(
+        <ul key={key++} className="list-disc list-outside space-y-1 my-3 ml-5 marker:text-forest-500">
+          {items.map((it, j) => <li key={j} className="text-ink-700 leading-relaxed">{inline(it)}</li>)}
+        </ul>,
+      );
+      continue;
+    }
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      out.push(
+        <ol key={key++} className="list-decimal list-outside space-y-1 my-3 ml-5 marker:text-forest-500 marker:font-bold">
+          {items.map((it, j) => <li key={j} className="text-ink-700 leading-relaxed">{inline(it)}</li>)}
+        </ol>,
+      );
+      continue;
+    }
+    if (line.startsWith('|')) {
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].startsWith('|')) {
+        if (/^\|\s*-/.test(lines[i])) { i++; continue; }
+        rows.push(lines[i].split('|').slice(1, -1).map((c) => c.trim()));
+        i++;
+      }
+      const [head, ...body] = rows;
+      out.push(
+        <div key={key++} className="overflow-x-auto my-4">
+          <table className="w-full text-sm border border-paper-300 rounded-lg overflow-hidden">
+            <thead className="bg-paper-100">
+              <tr>{head.map((h, j) => <th key={j} className="px-3 py-2 text-left font-semibold text-ink-900">{inline(h)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {body.map((r, j) => (
+                <tr key={j} className="border-t border-paper-300">
+                  {r.map((c, k) => <td key={k} className="px-3 py-2 text-ink-700">{inline(c)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
+    out.push(<p key={key++} className="text-ink-700 leading-relaxed my-3">{inline(line)}</p>);
+    i++;
+  }
+
+  return <div className="text-sm">{out}</div>;
 }
 
 function SummaryTile({

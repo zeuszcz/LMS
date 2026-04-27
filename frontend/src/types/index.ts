@@ -105,6 +105,30 @@ export interface CourseDetail extends Course {
   available_groups: GroupForCourse[];
 }
 
+export type EnrollmentRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface EnrollmentRequest {
+  id: string;
+  student_id: string;
+  group_id: string;
+  status: EnrollmentRequestStatus;
+  note: string | null;
+  processed_by: string | null;
+  processed_at: string | null;
+  decision_reason: string | null;
+  created_at: string;
+}
+
+export interface ActiveEnrollment {
+  enrollment_id: string;
+  group_id: string;
+  course_id: string;
+  course_title: string;
+  language: Language;
+  level: CefrLevel;
+  started_at: string;
+}
+
 export interface ScheduleSlot {
   id: string;
   group_id: string;
@@ -150,6 +174,8 @@ export interface Lesson {
   actual_started_at: string | null;
   actual_ended_at: string | null;
   status: LessonStatus;
+  content_md?: string | null;
+  summary?: string | null;
 }
 
 export interface AttendanceRow {

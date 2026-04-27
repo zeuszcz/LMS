@@ -25,6 +25,8 @@ class LessonOut(BaseModel):
     actual_started_at: datetime | None
     actual_ended_at: datetime | None
     status: LessonStatus
+    summary: str | None = None
+    content_md: str | None = None
 
 
 class AttendanceIn(BaseModel):
