@@ -27,6 +27,7 @@ import { Stat } from '@/components/ui/Stat';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { LanguageMark } from '@/components/ui/LanguageMark';
 import { LessonStatusPill } from '@/components/ui/StatusPill';
+import { ProgressRing, SkillBars } from '@/components/ui/ProgressChart';
 import { formatDateTime, relativeTime } from '@/lib/format';
 
 export function DashboardPage() {
@@ -212,6 +213,39 @@ function StudentDashboard() {
           />
         </div>
       </section>
+
+      {progress.data && (
+        <section>
+          <SectionHeading title="Прогресс по навыкам" icon={<TrendingUp size={14} strokeWidth={2} />} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="card-elevated lg:col-span-2">
+              <div className="eyebrow">CEFR skills</div>
+              <SkillBars
+                skills={skillsFromProgress(progress.data, assignments.data ?? [])}
+                className="mt-4"
+              />
+              <div className="mt-5 pt-4 border-t border-paper-300 text-xs text-ink-500">
+                Расчёт по посещаемости, оценкам домашек и активности на уроке. Обновляется
+                автоматически после закрытия урока.
+              </div>
+            </div>
+            <div className="card-elevated flex flex-col items-center justify-center text-center">
+              <div className="eyebrow self-start">Общая посещаемость</div>
+              <ProgressRing value={progress.data.attendance_rate} size={140} stroke={12} />
+              <div className="mt-4 text-sm text-ink-600">
+                <span className="font-semibold text-ink-900 num">
+                  {progress.data.lessons_attended}
+                </span>{' '}
+                из{' '}
+                <span className="font-semibold text-ink-900 num">
+                  {progress.data.lessons_total}
+                </span>{' '}
+                уроков посещено
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-3 card-elevated relative overflow-hidden">
@@ -543,4 +577,27 @@ function QuickLink({
       <div className="font-display font-bold text-sm text-ink-900">{label}</div>
     </Link>
   );
+}
+
+/* Derive 4 CEFR skill values from the aggregate progress endpoint.
+ * Listening proxy: attendance_rate. Reading proxy: HW submission rate.
+ * Writing proxy: avg score normalised. Speaking proxy: blend (most subjective). */
+function skillsFromProgress(
+  p: { attendance_rate: number; homework_submitted: number; homework_total: number; avg_score: number | null },
+  _hw: unknown[],
+) {
+  const attend = clamp01(p.attendance_rate);
+  const subRate = p.homework_total > 0 ? p.homework_submitted / p.homework_total : 0;
+  const grade = (p.avg_score ?? 0) / 10;
+  return [
+    { key: 'listening' as const, label: 'Listening', value: attend },
+    { key: 'reading' as const, label: 'Reading', value: clamp01(subRate * 0.85 + grade * 0.15) },
+    { key: 'writing' as const, label: 'Writing', value: clamp01(grade) },
+    { key: 'speaking' as const, label: 'Speaking', value: clamp01((attend + grade) / 2) },
+  ];
+}
+
+function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.max(0, Math.min(1, n));
 }
