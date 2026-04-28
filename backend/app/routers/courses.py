@@ -329,3 +329,22 @@ async def publish_course(
         await db.commit()
         await db.refresh(course)
     return course
+
+
+@router.patch("/{course_id}", response_model=CourseOut)
+async def update_course(
+    course_id: UUID,
+    payload: CourseCreate,
+    _user: Annotated[User, Depends(require_roles(UserRole.admin, UserRole.methodist))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Course:
+    res = await db.execute(select(Course).where(Course.id == course_id))
+    course = res.scalar_one_or_none()
+    if course is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+    data = payload.model_dump()
+    for k, v in data.items():
+        setattr(course, k, v)
+    await db.commit()
+    await db.refresh(course)
+    return course

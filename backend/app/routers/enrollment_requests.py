@@ -193,11 +193,32 @@ async def approve(
                 enrolled_at=datetime.now(UTC),
             )
         )
+        await db.flush()
 
     req.status = EnrollmentRequestStatus.approved
     req.processed_by = user.id
     req.processed_at = datetime.now(UTC)
     req.decision_reason = payload.reason
+
+    # Notifications
+    from app.models.course import Course
+    from app.models.user import User as UserModel
+    from app.services.notifier import notify_enrollment_decision
+
+    student_res = await db.execute(select(UserModel).where(UserModel.id == req.student_id))
+    student = student_res.scalar_one_or_none()
+    course_res = await db.execute(select(Course).where(Course.id == group.course_id))
+    course = course_res.scalar_one_or_none()
+    if student and course:
+        await notify_enrollment_decision(
+            db,
+            student_id=student.id,
+            student_email=student.email,
+            student_name=student.full_name,
+            course_title=course.title,
+            approved=True,
+            reason=payload.reason,
+        )
 
     await db.commit()
     await db.refresh(req)
@@ -227,6 +248,31 @@ async def reject(
     req.processed_by = user.id
     req.processed_at = datetime.now(UTC)
     req.decision_reason = payload.reason
+
+    # Notifications
+    from app.models.course import Course
+    from app.models.group import Group as GroupM
+    from app.models.user import User as UserModel
+    from app.services.notifier import notify_enrollment_decision
+
+    student_res = await db.execute(select(UserModel).where(UserModel.id == req.student_id))
+    student = student_res.scalar_one_or_none()
+    group_res2 = await db.execute(select(GroupM).where(GroupM.id == req.group_id))
+    group2 = group_res2.scalar_one_or_none()
+    course = None
+    if group2:
+        course_res = await db.execute(select(Course).where(Course.id == group2.course_id))
+        course = course_res.scalar_one_or_none()
+    if student and course:
+        await notify_enrollment_decision(
+            db,
+            student_id=student.id,
+            student_email=student.email,
+            student_name=student.full_name,
+            course_title=course.title,
+            approved=False,
+            reason=payload.reason,
+        )
 
     await db.commit()
     await db.refresh(req)

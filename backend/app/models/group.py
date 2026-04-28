@@ -35,6 +35,9 @@ class Group(Base, UUIDPKMixin, TimestampMixin, SoftDeleteMixin):
     teacher_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    room_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("room.id", ondelete="SET NULL"), nullable=True
+    )
     mode: Mapped[GroupMode] = mapped_column(Enum(GroupMode, name="group_mode"), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)

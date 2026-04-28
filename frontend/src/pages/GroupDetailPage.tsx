@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Users } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BookOpen, CalendarRange, Plus, Users } from 'lucide-react';
 import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchLessons } from '@/api/lessons';
 import { fetchUsers } from '@/api/users';
@@ -11,6 +11,7 @@ import { GroupStatusPill, LessonStatusPill } from '@/components/ui/StatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CreateLessonModal } from '@/components/forms/CreateLessonModal';
 import { ManageGroupModal, GroupManagementButtons } from '@/components/forms/ManageGroupModal';
+import { EditScheduleModal } from '@/components/forms/EditScheduleModal';
 import { useAuthStore } from '@/stores/authStore';
 import {
   formatDate,
@@ -43,6 +44,7 @@ export function GroupDetailPage() {
   });
   const me = useAuthStore((s) => s.user);
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
+  const [editScheduleOpen, setEditScheduleOpen] = useState(false);
   const [manageMode, setManageMode] = useState<'teacher' | 'students' | null>(null);
 
   if (group.isLoading) {
@@ -140,9 +142,20 @@ export function GroupDetailPage() {
       </div>
 
       {/* Schedule strip */}
-      {group.data.slots.length > 0 && (
-        <div className="card-flat">
-          <div className="eyebrow">Расписание</div>
+      <div className="card-flat">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="eyebrow !mb-0">Расписание</div>
+          {canManageGroup && (
+            <button onClick={() => setEditScheduleOpen(true)} className="btn-secondary btn-sm">
+              <CalendarRange size={12} strokeWidth={2.5} /> Изменить
+            </button>
+          )}
+        </div>
+        {group.data.slots.length === 0 ? (
+          <div className="text-sm text-ink-500 italic">
+            Расписание не задано. {canManageGroup && 'Добавьте слоты, чтобы система начала генерировать уроки.'}
+          </div>
+        ) : (
           <div className="flex flex-wrap items-center gap-3">
             {group.data.slots.map((s) => (
               <div
@@ -158,8 +171,8 @@ export function GroupDetailPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Body */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
@@ -261,6 +274,13 @@ export function GroupDetailPage() {
           mode={manageMode}
           group={group.data}
           onClose={() => setManageMode(null)}
+        />
+      )}
+      {editScheduleOpen && (
+        <EditScheduleModal
+          open
+          group={group.data}
+          onClose={() => setEditScheduleOpen(false)}
         />
       )}
     </div>

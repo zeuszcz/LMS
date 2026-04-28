@@ -10,8 +10,10 @@ import {
   Calendar,
   ChevronDown,
   Clock,
+  CreditCard,
   GraduationCap,
   Headphones,
+  Pencil,
   Quote,
   Sparkles,
   Star,
@@ -23,6 +25,9 @@ import { fetchUsers } from '@/api/users';
 import { createRequest, fetchRequests } from '@/api/enrollment_requests';
 import { LanguageMark } from '@/components/ui/LanguageMark';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { EditCourseModal } from '@/components/forms/EditCourseModal';
+import { PaymentStub } from '@/components/forms/PaymentStub';
+import { useAuthStore } from '@/stores/authStore';
 import { Rating } from '@/components/ui/Rating';
 import { toast } from '@/components/ui/Toast';
 import { AGE_LABEL, LANGUAGE_LABEL, formatDate } from '@/lib/format';
@@ -42,6 +47,11 @@ export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const me = useAuthStore((s) => s.user);
+  const canEdit =
+    !!me && (me.is_superuser || me.roles.includes('admin') || me.roles.includes('methodist'));
+  const [editOpen, setEditOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const course = useQuery({
     queryKey: ['course', id],
     queryFn: () => fetchCourse(id!),
@@ -117,13 +127,25 @@ export function CourseDetailPage() {
   return (
     <div className="space-y-12">
       {/* Breadcrumb */}
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] font-bold text-ink-500 hover:text-forest-700 transition-colors"
-      >
-        <ArrowLeft size={12} strokeWidth={2.5} />
-        Все курсы
-      </button>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.14em] font-bold text-ink-500 hover:text-forest-700 transition-colors"
+        >
+          <ArrowLeft size={12} strokeWidth={2.5} />
+          Все курсы
+        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPayOpen(true)} className="btn-gold btn-sm">
+            <CreditCard size={12} strokeWidth={2.5} /> Оплатить курс
+          </button>
+          {canEdit && (
+            <button onClick={() => setEditOpen(true)} className="btn-secondary btn-sm">
+              <Pencil size={12} strokeWidth={2.5} /> Редактировать
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* HERO */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-forest-600 via-forest-700 to-forest-900 text-white shadow-pop-lg">
@@ -314,6 +336,17 @@ export function CourseDetailPage() {
           Все курсы YES Center
         </Link>
       </div>
+
+      {editOpen && <EditCourseModal open onClose={() => setEditOpen(false)} course={c} />}
+      {payOpen && (
+        <PaymentStub
+          open
+          onClose={() => setPayOpen(false)}
+          amountMinor={c.duration_weeks * 250000}
+          currency="RUB"
+          description={`${c.title} · ${c.lessons_count} уроков`}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Lock, PenLine, Play, Plus, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Lock, Pencil, PenLine, Play, Plus, Save, Sparkles, Video } from 'lucide-react';
 import {
   AttendanceInput,
   closeLesson,
@@ -16,6 +16,8 @@ import { toast } from '@/components/ui/Toast';
 import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchUsers } from '@/api/users';
 import { CreateAssignmentModal } from '@/components/forms/CreateAssignmentModal';
+import { EditLessonModal } from '@/components/forms/EditLessonModal';
+import { VideoClassroomStub } from '@/components/forms/VideoClassroomStub';
 import { useAuthStore } from '@/stores/authStore';
 import { LessonStatusPill } from '@/components/ui/StatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -120,6 +122,8 @@ export function LessonDetailPage() {
     enabled: !!id,
   });
   const [createHwOpen, setCreateHwOpen] = useState(false);
+  const [editLessonOpen, setEditLessonOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
 
   const selfComplete = useMutation({
     mutationFn: () => selfCompleteLesson(id!),
@@ -195,15 +199,25 @@ export function LessonDetailPage() {
           </div>
         </div>
 
-        {canEdit && lesson.data.status === 'planned' && (
-          <button
-            onClick={() => start.mutate()}
-            disabled={start.isPending}
-            className="btn-gold"
-          >
-            <Play size={14} strokeWidth={2} fill="currentColor" /> Начать урок
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setVideoOpen(true)} className="btn-secondary btn-sm">
+            <Video size={12} strokeWidth={2} /> Видеокласс
           </button>
-        )}
+          {canEdit && (
+            <button onClick={() => setEditLessonOpen(true)} className="btn-secondary btn-sm">
+              <Pencil size={12} strokeWidth={2.5} /> Редактировать
+            </button>
+          )}
+          {canEdit && lesson.data.status === 'planned' && (
+            <button
+              onClick={() => start.mutate()}
+              disabled={start.isPending}
+              className="btn-gold"
+            >
+              <Play size={14} strokeWidth={2} fill="currentColor" /> Начать урок
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Lesson summary tagline */}
@@ -471,6 +485,21 @@ export function LessonDetailPage() {
         onClose={() => setCreateHwOpen(false)}
         lessonId={id!}
       />
+
+      {editLessonOpen && lesson.data && (
+        <EditLessonModal
+          open
+          onClose={() => setEditLessonOpen(false)}
+          lesson={lesson.data}
+        />
+      )}
+      {videoOpen && lesson.data && (
+        <VideoClassroomStub
+          open
+          onClose={() => setVideoOpen(false)}
+          lessonTitle={lesson.data.title}
+        />
+      )}
     </div>
   );
 }

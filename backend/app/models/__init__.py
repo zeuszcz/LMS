@@ -19,6 +19,7 @@ from app.models.branch import Branch
 from app.models.course import AgeGroup, CefrLevel, Course, Language
 from app.models.course_content import CourseFeature, CourseModule, CourseReview
 from app.models.enrollment_request import EnrollmentRequest, EnrollmentRequestStatus
+from app.models.room import Room
 from app.models.group import Enrollment, Group, GroupMode, GroupStatus
 from app.models.lesson import Attendance, AttendanceStatus, LessonInstance, LessonStatus
 from app.models.notification import (
@@ -54,6 +55,7 @@ __all__ = [
     "CourseReview",
     "EnrollmentRequest",
     "EnrollmentRequestStatus",
+    "Room",
     "Group",
     "GroupMode",
     "GroupStatus",

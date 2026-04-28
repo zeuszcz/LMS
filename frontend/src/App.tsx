@@ -19,6 +19,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
 import { TeachersPage } from './pages/TeachersPage';
 import { MyStudentsPage } from './pages/MyStudentsPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export function App() {
@@ -49,6 +50,7 @@ export function App() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/teachers" element={<TeachersPage />} />
           <Route path="/my-students" element={<MyStudentsPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

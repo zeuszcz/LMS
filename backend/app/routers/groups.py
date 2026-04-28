@@ -184,6 +184,126 @@ async def unenroll(
     await db.commit()
 
 
+class TransferIn(BaseModel):
+    target_group_id: UUID
+
+
+@router.post(
+    "/{group_id}/enrollments/{student_id}/transfer",
+    response_model=EnrollmentOut,
+)
+async def transfer_student(
+    group_id: UUID,
+    student_id: UUID,
+    payload: TransferIn,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Enrollment:
+    src_res = await db.execute(select(Group).where(Group.id == group_id))
+    src = src_res.scalar_one_or_none()
+    dst_res = await db.execute(select(Group).where(Group.id == payload.target_group_id))
+    dst = dst_res.scalar_one_or_none()
+    if src is None or dst is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not (
+        permissions.can_manage_group(user, src.branch_id)
+        and permissions.can_manage_group(user, dst.branch_id)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    src_enr = await db.execute(
+        select(Enrollment).where(
+            Enrollment.student_id == student_id,
+            Enrollment.group_id == group_id,
+            Enrollment.left_at.is_(None),
+            Enrollment.deleted_at.is_(None),
+        )
+    )
+    enrollment = src_enr.scalar_one_or_none()
+    if enrollment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source enrollment not found")
+
+    dup = await db.execute(
+        select(Enrollment).where(
+            Enrollment.student_id == student_id,
+            Enrollment.group_id == payload.target_group_id,
+            Enrollment.left_at.is_(None),
+            Enrollment.deleted_at.is_(None),
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already enrolled in target")
+
+    cnt = (
+        await db.execute(
+            select(func.count())
+            .select_from(Enrollment)
+            .where(Enrollment.group_id == payload.target_group_id, Enrollment.left_at.is_(None))
+        )
+    ).scalar_one()
+    if cnt >= dst.max_students:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Target group is full")
+
+    enrollment.left_at = datetime.now(UTC)
+    new_enr = Enrollment(
+        student_id=student_id,
+        group_id=payload.target_group_id,
+        enrolled_at=datetime.now(UTC),
+    )
+    db.add(new_enr)
+    await db.commit()
+    await db.refresh(new_enr)
+    return new_enr
+
+
+from app.schemas.group import ScheduleSlotIn  # noqa: E402
+
+
+class SlotsReplaceIn(BaseModel):
+    slots: list[ScheduleSlotIn]
+
+
+@router.put("/{group_id}/slots", response_model=GroupDetail)
+async def replace_slots(
+    group_id: UUID,
+    payload: SlotsReplaceIn,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GroupDetail:
+    group_res = await db.execute(select(Group).where(Group.id == group_id))
+    group = group_res.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not permissions.can_manage_group(user, group.branch_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    # Drop existing
+    existing = await db.execute(select(ScheduleSlot).where(ScheduleSlot.group_id == group_id))
+    for s in existing.scalars().all():
+        await db.delete(s)
+    await db.flush()
+
+    for s in payload.slots:
+        db.add(
+            ScheduleSlot(
+                group_id=group_id,
+                weekday=s.weekday,
+                start_time=s.start_time,
+                end_time=s.end_time,
+                valid_from=s.valid_from,
+                valid_to=s.valid_to,
+            )
+        )
+    await db.commit()
+    await db.refresh(group)
+
+    slots_res = await db.execute(select(ScheduleSlot).where(ScheduleSlot.group_id == group_id))
+    return GroupDetail(
+        **GroupOut.model_validate(group).model_dump(),
+        slots=[s for s in slots_res.scalars().all()],
+    )
+
+
 @router.post(
     "/{group_id}/enrollments",
     response_model=EnrollmentOut,

@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,6 +98,56 @@ async def get_lesson(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LessonInstance:
     return await _get_lesson_or_404(db, lesson_id)
+
+
+class LessonPatch(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    scheduled_at: datetime | None = None
+    duration_min: int | None = Field(default=None, ge=15, le=240)
+    status: LessonStatus | None = None
+    summary: str | None = Field(default=None, max_length=500)
+    content_md: str | None = Field(default=None, max_length=20000)
+    notes_for_methodist: str | None = Field(default=None, max_length=4000)
+
+
+@router.patch("/{lesson_id}", response_model=LessonOut)
+async def update_lesson(
+    lesson_id: UUID,
+    payload: LessonPatch,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> LessonInstance:
+    lesson = await _get_lesson_or_404(db, lesson_id)
+    group = await _get_group_or_404(db, lesson.group_id)
+    if not permissions.can_record_attendance(user, group.teacher_id, group.branch_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    fields = payload.model_dump(exclude_unset=True)
+    for k, v in fields.items():
+        setattr(lesson, k, v)
+    await db.commit()
+    await db.refresh(lesson)
+    return lesson
+
+
+@router.post("/{lesson_id}/cancel", response_model=LessonOut)
+async def cancel_lesson(
+    lesson_id: UUID,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> LessonInstance:
+    lesson = await _get_lesson_or_404(db, lesson_id)
+    group = await _get_group_or_404(db, lesson.group_id)
+    if not permissions.can_record_attendance(user, group.teacher_id, group.branch_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    if lesson.status == LessonStatus.finished:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Already finished"
+        )
+    lesson.status = LessonStatus.cancelled
+    await db.commit()
+    await db.refresh(lesson)
+    return lesson
 
 
 @router.post("/{lesson_id}/start", response_model=LessonOut)

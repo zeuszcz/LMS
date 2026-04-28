@@ -51,3 +51,23 @@ async def get_branch(
     if branch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
     return branch
+
+
+@router.patch("/{branch_id}", response_model=BranchOut)
+async def update_branch(
+    branch_id: UUID,
+    payload: BranchCreate,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Branch:
+    if not permissions.is_admin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    res = await db.execute(select(Branch).where(Branch.id == branch_id))
+    branch = res.scalar_one_or_none()
+    if branch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    for k, v in payload.model_dump().items():
+        setattr(branch, k, v)
+    await db.commit()
+    await db.refresh(branch)
+    return branch
