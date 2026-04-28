@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = "no-reply@yescenter.local"
 
+    # LiveKit (existing self-hosted server)
+    livekit_url: str = ""  # e.g. wss://livekit.innertalk.space
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+
+    # Public base URL (used by frontend builds + email links)
+    public_base_url: str = "http://localhost:5173"
+
     @property
     def database_url_sync(self) -> str:
         """Sync URL for Alembic offline mode."""

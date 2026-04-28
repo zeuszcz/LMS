@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileText, MessageCircle, PenLine, Send } from 'lucide-react';
+import { CheckCircle2, FileText, MessageCircle, Mic, PenLine, Send, Upload, X } from 'lucide-react';
 import {
   fetchAssignments,
   fetchSubmissions,
   gradeSubmission,
   submitHomework,
 } from '@/api/assignments';
+import { api } from '@/api/client';
 import { fetchUsers } from '@/api/users';
 import { useAuthStore } from '@/stores/authStore';
 import { ASSIGNMENT_KIND_LABEL, formatDateTime } from '@/lib/format';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SubmissionPill } from '@/components/ui/StatusPill';
+import { toast } from '@/components/ui/Toast';
 import type { Assignment, Submission } from '@/types';
+
+interface UploadResult {
+  key: string;
+  url: string;
+  content_type: string;
+  size: number;
+}
 
 export function HomeworkPage() {
   const user = useAuthStore((s) => s.user);
@@ -106,12 +115,50 @@ function AssignmentDetail({ assignment, isStudent }: { assignment: Assignment; i
   const userById = new Map((users.data ?? []).map((u) => [u.id, u]));
 
   const [draft, setDraft] = useState('');
+  const [audioFile, setAudioFile] = useState<UploadResult | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isSpeaking = assignment.kind === 'speaking';
 
   const submit = useMutation({
-    mutationFn: (asSubmit: boolean) =>
-      submitHomework(assignment.id, { answer: draft }, asSubmit),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['submissions', assignment.id] }),
+    mutationFn: (asSubmit: boolean) => {
+      const payload: Record<string, unknown> = { answer: draft };
+      if (audioFile) {
+        payload.audio = { key: audioFile.key, url: audioFile.url, content_type: audioFile.content_type };
+      }
+      return submitHomework(assignment.id, payload, asSubmit);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['submissions', assignment.id] });
+      setAudioFile(null);
+      setDraft('');
+    },
   });
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 25 * 1024 * 1024) {
+      toast('error', 'Слишком большой файл', 'Максимум 25 МБ.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      const { data } = await api.post<UploadResult>('/api/files/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setAudioFile(data);
+      toast('success', 'Файл загружен', `${(data.size / 1024).toFixed(0)} KB`);
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast('error', 'Не удалось загрузить', detail ?? 'Ошибка');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -150,16 +197,73 @@ function AssignmentDetail({ assignment, isStudent }: { assignment: Assignment; i
           </div>
           <textarea
             className="input w-full"
-            rows={5}
+            rows={isSpeaking ? 3 : 5}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Введите ваш ответ…"
+            placeholder={
+              isSpeaking
+                ? 'Текст к аудио (опционально) — script, заметки…'
+                : 'Введите ваш ответ…'
+            }
           />
+
+          {isSpeaking && (
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm"
+                onChange={onFile}
+                className="hidden"
+              />
+              {audioFile ? (
+                <div className="rounded-2xl border border-sage-300 bg-sage-50 p-4 flex items-start gap-3">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sage-500 text-white flex-shrink-0">
+                    <Mic size={18} strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-bold text-sm text-ink-900 truncate">
+                      Аудио загружено · {(audioFile.size / 1024).toFixed(0)} KB
+                    </div>
+                    <audio src={audioFile.url} controls className="mt-2 w-full max-w-md" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAudioFile(null)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-terra-500 hover:bg-terra-50 flex-shrink-0"
+                    aria-label="Удалить файл"
+                  >
+                    <X size={14} strokeWidth={2} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full rounded-2xl border-2 border-dashed border-paper-400 bg-paper-100/50 hover:border-forest-500 hover:bg-forest-50/30 transition-colors p-6 text-center"
+                >
+                  <Upload size={20} strokeWidth={1.6} className="mx-auto text-ink-500 mb-2" />
+                  <div className="text-sm font-bold text-ink-900">
+                    {uploading ? 'Загрузка…' : 'Записать или загрузить аудио'}
+                  </div>
+                  <div className="text-xs text-ink-500 mt-1">
+                    MP3 / WAV / M4A · до 25 МБ
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <button onClick={() => submit.mutate(false)} className="btn-secondary text-sm">
               Сохранить черновик
             </button>
-            <button onClick={() => submit.mutate(true)} className="btn-primary text-sm">
+            <button
+              onClick={() => submit.mutate(true)}
+              disabled={isSpeaking && !audioFile && !draft.trim()}
+              className="btn-primary text-sm"
+            >
               <Send size={14} strokeWidth={2} /> Отправить
             </button>
           </div>

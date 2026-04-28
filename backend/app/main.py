@@ -17,6 +17,7 @@ from app.routers import (
     groups,
     health,
     lessons,
+    livekit,
     notifications,
     progress,
     rooms,
@@ -77,6 +78,7 @@ app.include_router(
 app.include_router(teachers.router, prefix="/api/teachers", tags=["teachers"])
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(livekit.router, prefix="/api/livekit", tags=["livekit"])
 
 
 @app.get("/")

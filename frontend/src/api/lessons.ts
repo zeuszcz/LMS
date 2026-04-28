@@ -62,3 +62,21 @@ export async function selfCompleteLesson(id: string): Promise<AttendanceRow> {
   const { data } = await api.post<AttendanceRow>(`/api/lessons/${id}/self-complete`);
   return data;
 }
+
+export interface LessonPatch {
+  title?: string;
+  scheduled_at?: string;
+  duration_min?: number;
+  summary?: string;
+  content_md?: string;
+}
+
+export async function patchLesson(id: string, payload: LessonPatch): Promise<Lesson> {
+  const { data } = await api.patch<Lesson>(`/api/lessons/${id}`, payload);
+  return data;
+}
+
+export async function cancelLesson(id: string): Promise<Lesson> {
+  const { data } = await api.post<Lesson>(`/api/lessons/${id}/cancel`);
+  return data;
+}

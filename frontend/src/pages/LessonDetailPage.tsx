@@ -17,7 +17,7 @@ import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchUsers } from '@/api/users';
 import { CreateAssignmentModal } from '@/components/forms/CreateAssignmentModal';
 import { EditLessonModal } from '@/components/forms/EditLessonModal';
-import { VideoClassroomStub } from '@/components/forms/VideoClassroomStub';
+import { VideoClassroom } from '@/components/classroom/VideoClassroom';
 import { useAuthStore } from '@/stores/authStore';
 import { LessonStatusPill } from '@/components/ui/StatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -494,9 +494,10 @@ export function LessonDetailPage() {
         />
       )}
       {videoOpen && lesson.data && (
-        <VideoClassroomStub
+        <VideoClassroom
           open
           onClose={() => setVideoOpen(false)}
+          lessonId={lesson.data.id}
           lessonTitle={lesson.data.title}
         />
       )}

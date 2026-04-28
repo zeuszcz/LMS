@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
   title: string;
   description?: string;
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'full';
   children: ReactNode;
   footer?: ReactNode;
 }
@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, description, size = 'md', children
         aria-labelledby="modal-title"
         className={clsx(
           'relative w-full bg-paper-50 rounded-3xl shadow-pop-lg border border-paper-300 animate-pop-in flex flex-col max-h-[90vh]',
-          size === 'lg' ? 'max-w-3xl' : 'max-w-xl',
+          size === 'full' ? 'max-w-6xl' : size === 'lg' ? 'max-w-3xl' : 'max-w-xl',
         )}
       >
         <div className="flex items-start justify-between gap-4 p-6 border-b border-paper-300">

@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
   { to: '/courses', label: 'Курсы', icon: GraduationCap, roles: 'all' },
   { to: '/groups', label: 'Группы', icon: Layers, roles: 'all' },
   { to: '/lessons', label: 'Уроки', icon: CalendarClock, roles: ['student', 'teacher', 'methodist', 'admin', 'branch_manager'] },
+  { to: '/calendar', label: 'Календарь', icon: CalendarClock, roles: ['teacher', 'methodist', 'admin', 'branch_manager'] },
   { to: '/homework', label: 'Домашки', icon: PenLine, roles: ['student', 'teacher', 'methodist', 'admin'] },
   { to: '/my-students', label: 'Мои студенты', icon: Users, roles: ['teacher'] },
 ];

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Trash2, UserPlus } from 'lucide-react';
+import { ArrowRightLeft, GraduationCap, Trash2, UserPlus } from 'lucide-react';
 import { api } from '@/api/client';
 import { Modal } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { fetchUsers } from '@/api/users';
-import { fetchEnrollments } from '@/api/groups';
-import type { GroupDetail, UserOut } from '@/types';
+import { fetchEnrollments, fetchGroups } from '@/api/groups';
+import { fetchCourses } from '@/api/courses';
+import type { Group, GroupDetail, UserOut } from '@/types';
 
 interface Props {
   open: boolean;
@@ -78,6 +79,35 @@ export function ManageGroupModal({ open, onClose, group, mode }: Props) {
       toast('error', 'Не удалось отчислить', err?.response?.data?.detail ?? 'Ошибка');
     },
   });
+
+  const allGroups = useQuery({
+    queryKey: ['groups-all-for-transfer'],
+    queryFn: () => fetchGroups(),
+    enabled: open && mode === 'students',
+  });
+  const allCourses = useQuery({
+    queryKey: ['courses-all'],
+    queryFn: () => fetchCourses({ limit: 200, only_published: false }),
+    enabled: open && mode === 'students',
+  });
+
+  const transfer = useMutation({
+    mutationFn: async ({ studentId, targetGroupId }: { studentId: string; targetGroupId: string }) => {
+      await api.post(`/api/groups/${group.id}/enrollments/${studentId}/transfer`, {
+        target_group_id: targetGroupId,
+      });
+    },
+    onSuccess: () => {
+      toast('success', 'Студент переведён');
+      qc.invalidateQueries({ queryKey: ['enrollments', group.id] });
+      qc.invalidateQueries({ queryKey: ['groups'] });
+    },
+    onError: (err: { response?: { data?: { detail?: string } } }) => {
+      toast('error', 'Не удалось перевести', err?.response?.data?.detail ?? 'Ошибка');
+    },
+  });
+
+  const [transferOpen, setTransferOpen] = useState<string | null>(null);  // studentId being transferred
 
   const userById = new Map((users.data ?? []).map((u) => [u.id, u]));
   const enrolledIds = new Set((enrollments.data ?? []).map((e) => e.student_id));
@@ -173,6 +203,20 @@ export function ManageGroupModal({ open, onClose, group, mode }: Props) {
                     <div className="text-xs text-ink-500 font-mono truncate">{u.email ?? ''}</div>
                   </div>
                   <button
+                    onClick={() =>
+                      setTransferOpen(transferOpen === u.id ? null : u.id)
+                    }
+                    className={
+                      transferOpen === u.id
+                        ? 'inline-flex h-8 w-8 items-center justify-center rounded-lg bg-forest-100 text-forest-700 transition-colors flex-shrink-0'
+                        : 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-500 hover:bg-paper-200 hover:text-ink-900 transition-colors flex-shrink-0'
+                    }
+                    aria-label="Перевести"
+                    title="Перевести в другую группу"
+                  >
+                    <ArrowRightLeft size={14} strokeWidth={2} />
+                  </button>
+                  <button
                     onClick={() => {
                       if (confirm(`Отчислить ${u.full_name} из группы?`)) {
                         unenroll.mutate(u.id);
@@ -187,6 +231,63 @@ export function ManageGroupModal({ open, onClose, group, mode }: Props) {
               ))}
             </ul>
           )}
+          {transferOpen && (() => {
+            const courseById = new Map((allCourses.data?.items ?? []).map((c) => [c.id, c]));
+            const otherGroups = (allGroups.data ?? []).filter(
+              (g: Group) => g.id !== group.id,
+            );
+            return (
+              <div className="mt-3 rounded-2xl bg-forest-50 border border-forest-100 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft size={14} strokeWidth={2.5} className="text-forest-700" />
+                  <h4 className="font-display font-bold text-sm text-ink-900">
+                    Перевести {userById.get(transferOpen)?.full_name} в группу:
+                  </h4>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {otherGroups.length === 0 ? (
+                    <p className="text-xs text-ink-500 italic">
+                      Нет других групп для перевода.
+                    </p>
+                  ) : (
+                    otherGroups.map((g: Group) => {
+                      const c = courseById.get(g.course_id);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => {
+                            transfer.mutate({
+                              studentId: transferOpen,
+                              targetGroupId: g.id,
+                            });
+                            setTransferOpen(null);
+                          }}
+                          disabled={transfer.isPending}
+                          className="w-full text-left px-3 py-2 rounded-lg bg-paper-50 border border-paper-300 hover:border-forest-500 transition-colors text-sm"
+                        >
+                          <div className="font-medium text-ink-900 truncate">
+                            {c?.title ?? 'Группа'}{' '}
+                            <span className="text-ink-500 font-normal">· {c?.level ?? '—'}</span>
+                          </div>
+                          <div className="text-xs text-ink-500">
+                            старт {g.start_date} · {g.mode}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTransferOpen(null)}
+                  className="text-xs font-bold text-ink-500 hover:text-ink-900"
+                >
+                  Отмена
+                </button>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Add student */}

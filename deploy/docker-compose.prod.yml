@@ -1,0 +1,137 @@
+name: yes-lms
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?missing POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lms}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: lms-mailhog
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"  # web UI (bind localhost only — tunnel for inspection)
+
+  minio:
+    image: minio/minio:latest
+    container_name: lms-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?missing S3_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: yes-lms-backend:latest
+    container_name: lms-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment: &backend-env
+      APP_ENV: production
+      DEBUG: "false"
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lms}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lms}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?missing JWT_SECRET}
+      BOOTSTRAP_SUPERUSER_EMAIL: ${BOOTSTRAP_SUPERUSER_EMAIL:?missing BOOTSTRAP_SUPERUSER_EMAIL}
+      BOOTSTRAP_SUPERUSER_PASSWORD: ${BOOTSTRAP_SUPERUSER_PASSWORD:?missing BOOTSTRAP_SUPERUSER_PASSWORD}
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-lms-media}
+      S3_REGION: ${S3_REGION:-ru-central1}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@yescenter.ru}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://yes.innertalk.space}
+      CORS_ORIGINS: '["https://yes.innertalk.space"]'
+    ports:
+      - "127.0.0.1:8001:8000"
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.services.bootstrap || true &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+
+  worker:
+    image: yes-lms-backend:latest
+    container_name: lms-worker
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment: *backend-env
+    command: celery -A app.worker:celery_app worker -l info -Q celery --concurrency=2
+
+  beat:
+    image: yes-lms-backend:latest
+    container_name: lms-beat
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment: *backend-env
+    command: celery -A app.worker:celery_app beat -l info
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    image: yes-lms-frontend:latest
+    container_name: lms-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8081:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
