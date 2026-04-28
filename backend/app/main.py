@@ -17,6 +17,7 @@ from app.routers import (
     lessons,
     notifications,
     progress,
+    teachers,
     users,
 )
 
@@ -63,6 +64,7 @@ app.include_router(
     prefix="/api/enrollment-requests",
     tags=["enrollment-requests"],
 )
+app.include_router(teachers.router, prefix="/api/teachers", tags=["teachers"])
 
 
 @app.get("/")

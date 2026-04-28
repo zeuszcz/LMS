@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowUpRight, BookOpen, Users } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, BookOpen, Plus, Users } from 'lucide-react';
 import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchLessons } from '@/api/lessons';
 import { fetchUsers } from '@/api/users';
@@ -8,6 +9,9 @@ import { fetchCourses } from '@/api/courses';
 import { LanguageMark } from '@/components/ui/LanguageMark';
 import { GroupStatusPill, LessonStatusPill } from '@/components/ui/StatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { CreateLessonModal } from '@/components/forms/CreateLessonModal';
+import { ManageGroupModal, GroupManagementButtons } from '@/components/forms/ManageGroupModal';
+import { useAuthStore } from '@/stores/authStore';
 import {
   formatDate,
   formatDateTime,
@@ -37,6 +41,9 @@ export function GroupDetailPage() {
     queryKey: ['courses-all'],
     queryFn: () => fetchCourses({ limit: 100, only_published: false }),
   });
+  const me = useAuthStore((s) => s.user);
+  const [createLessonOpen, setCreateLessonOpen] = useState(false);
+  const [manageMode, setManageMode] = useState<'teacher' | 'students' | null>(null);
 
   if (group.isLoading) {
     return (
@@ -59,6 +66,22 @@ export function GroupDetailPage() {
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
   const past = sortedLessons.filter((l) => new Date(l.scheduled_at) < new Date());
   const upcoming = sortedLessons.filter((l) => new Date(l.scheduled_at) >= new Date());
+
+  const isTeacherOfGroup = !!me && me.id === group.data.teacher_id;
+  const canManageLessons =
+    !!me &&
+    (me.is_superuser ||
+      me.roles.includes('admin') ||
+      me.roles.includes('methodist') ||
+      isTeacherOfGroup);
+  const canManageGroup =
+    !!me &&
+    (me.is_superuser ||
+      me.roles.includes('admin') ||
+      me.roles.includes('methodist') ||
+      me.roles.includes('branch_manager'));
+  const teacher = group.data.teacher_id ? userById.get(group.data.teacher_id) : undefined;
+  const nextSequence = (sortedLessons[sortedLessons.length - 1]?.sequence ?? 0) + 1;
 
   return (
     <div className="space-y-8">
@@ -85,7 +108,35 @@ export function GroupDetailPage() {
             </div>
           </div>
         </div>
-        <GroupStatusPill status={group.data.status} className="text-sm px-3 py-1" />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GroupStatusPill status={group.data.status} className="text-sm px-3 py-1" />
+          <GroupManagementButtons
+            group={group.data}
+            canManage={canManageGroup}
+            onManageTeacher={() => setManageMode('teacher')}
+            onManageStudents={() => setManageMode('students')}
+          />
+        </div>
+      </div>
+
+      {/* Teacher card */}
+      <div className="card-flat flex items-center gap-3 flex-wrap">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-forest-500 to-forest-700 text-white text-sm font-extrabold flex-shrink-0">
+          {teacher
+            ? teacher.full_name.split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+            : '?'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-400">
+            Преподаватель
+          </div>
+          <div className="font-display text-base font-extrabold text-ink-900 truncate">
+            {teacher?.full_name ?? 'Не назначен'}
+          </div>
+          {teacher?.email && (
+            <div className="text-xs text-ink-500 font-mono truncate">{teacher.email}</div>
+          )}
+        </div>
       </div>
 
       {/* Schedule strip */}
@@ -142,14 +193,24 @@ export function GroupDetailPage() {
         </aside>
 
         <section className="lg:col-span-3 card">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <div className="flex items-center gap-2 eyebrow">
               <BookOpen size={12} strokeWidth={1.6} />
               Уроки · {sortedLessons.length}
             </div>
-            <div className="text-[11px] text-ink-500 num">
-              <span className="text-ink-700 font-medium">{past.length}</span> прошло ·{' '}
-              <span className="text-ink-700 font-medium">{upcoming.length}</span> впереди
+            <div className="flex items-center gap-3">
+              <div className="text-[11px] text-ink-500 num">
+                <span className="text-ink-700 font-medium">{past.length}</span> прошло ·{' '}
+                <span className="text-ink-700 font-medium">{upcoming.length}</span> впереди
+              </div>
+              {canManageLessons && (
+                <button
+                  onClick={() => setCreateLessonOpen(true)}
+                  className="btn-primary btn-sm"
+                >
+                  <Plus size={12} strokeWidth={2.5} /> Урок
+                </button>
+              )}
             </div>
           </div>
 
@@ -187,6 +248,21 @@ export function GroupDetailPage() {
           </div>
         </section>
       </div>
+
+      <CreateLessonModal
+        open={createLessonOpen}
+        onClose={() => setCreateLessonOpen(false)}
+        groupId={group.data.id}
+        defaultSequence={nextSequence}
+      />
+      {manageMode && (
+        <ManageGroupModal
+          open
+          mode={manageMode}
+          group={group.data}
+          onClose={() => setManageMode(null)}
+        />
+      )}
     </div>
   );
 }

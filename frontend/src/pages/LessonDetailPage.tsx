@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, ClipboardCheck, Lock, Play, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Lock, PenLine, Play, Plus, Save, Sparkles } from 'lucide-react';
 import {
   AttendanceInput,
   closeLesson,
@@ -11,9 +11,11 @@ import {
   selfCompleteLesson,
   startLesson,
 } from '@/api/lessons';
+import { fetchAssignments } from '@/api/assignments';
 import { toast } from '@/components/ui/Toast';
 import { fetchEnrollments, fetchGroup } from '@/api/groups';
 import { fetchUsers } from '@/api/users';
+import { CreateAssignmentModal } from '@/components/forms/CreateAssignmentModal';
 import { useAuthStore } from '@/stores/authStore';
 import { LessonStatusPill } from '@/components/ui/StatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -112,6 +114,13 @@ export function LessonDetailPage() {
       qc.invalidateQueries({ queryKey: ['attendance', id] });
     },
   });
+  const lessonAssignments = useQuery({
+    queryKey: ['assignments-of-lesson', id],
+    queryFn: () => fetchAssignments({ lesson_instance_id: id! }),
+    enabled: !!id,
+  });
+  const [createHwOpen, setCreateHwOpen] = useState(false);
+
   const selfComplete = useMutation({
     mutationFn: () => selfCompleteLesson(id!),
     onSuccess: () => {
@@ -256,6 +265,52 @@ export function LessonDetailPage() {
           )}
         </div>
       )}
+
+      {/* Assignments attached to this lesson */}
+      <div className="card-elevated">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gold-50 text-gold-700">
+              <PenLine size={14} strokeWidth={2.5} />
+            </span>
+            <h2 className="font-display text-lg font-extrabold text-ink-900">
+              Домашние задания · {(lessonAssignments.data ?? []).length}
+            </h2>
+          </div>
+          {canEdit && (
+            <button onClick={() => setCreateHwOpen(true)} className="btn-primary btn-sm">
+              <Plus size={12} strokeWidth={2.5} /> Создать домашку
+            </button>
+          )}
+        </div>
+        {(lessonAssignments.data ?? []).length === 0 ? (
+          <div className="text-sm text-ink-500 italic">
+            {canEdit
+              ? 'К этому уроку ещё не прикреплено заданий. Создайте первое — оно сразу появится у студентов.'
+              : 'К этому уроку нет домашек.'}
+          </div>
+        ) : (
+          <ul className="divide-y divide-paper-300">
+            {(lessonAssignments.data ?? []).map((a) => (
+              <li key={a.id}>
+                <Link to="/homework" className="group flex items-center gap-3 py-3 hover:bg-paper-100 transition-colors px-2 -mx-2 rounded-lg">
+                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gold-50 text-gold-700">
+                    <PenLine size={14} strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display font-bold text-sm text-ink-900 truncate">{a.title}</div>
+                    <div className="text-xs text-ink-500 mt-0.5">
+                      {a.kind} · макс. {a.max_score}{' '}
+                      {a.due_at && <>· до {formatDateTime(a.due_at)}</>}
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-ink-300 group-hover:text-forest-700 transition-colors flex-shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Attendance summary (teacher / methodist view) */}
       {!isFinished && studentRows.length > 0 && (
@@ -410,6 +465,12 @@ export function LessonDetailPage() {
           </div>
         </div>
       )}
+
+      <CreateAssignmentModal
+        open={createHwOpen}
+        onClose={() => setCreateHwOpen(false)}
+        lessonId={id!}
+      />
     </div>
   );
 }

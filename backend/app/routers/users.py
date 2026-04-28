@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import distinct, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentUser, require_roles
@@ -15,18 +15,22 @@ router = APIRouter()
 
 @router.get("/", response_model=list[UserOut])
 async def list_users(
-    _user: Annotated[User, Depends(require_roles(UserRole.admin, UserRole.branch_manager))],
+    _user: Annotated[User, Depends(require_roles(UserRole.admin, UserRole.branch_manager, UserRole.methodist))],
     db: Annotated[AsyncSession, Depends(get_db)],
+    role: UserRole | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[User]:
-    result = await db.execute(
-        select(User)
-        .where(User.deleted_at.is_(None))
-        .order_by(User.created_at.desc())
-        .limit(min(limit, 200))
-        .offset(offset)
-    )
+    stmt = select(User).where(User.deleted_at.is_(None))
+    if role is not None:
+        # filter by users having an active assignment of this role
+        sub = (
+            select(distinct(UserRoleAssignment.user_id))
+            .where(UserRoleAssignment.role == role, UserRoleAssignment.revoked_at.is_(None))
+        ).subquery()
+        stmt = stmt.where(User.id.in_(select(sub)))
+    stmt = stmt.order_by(User.created_at.desc()).limit(min(limit, 500)).offset(offset)
+    result = await db.execute(stmt)
     return list(result.scalars().all())
 
 

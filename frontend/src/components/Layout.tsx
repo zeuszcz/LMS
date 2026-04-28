@@ -36,10 +36,12 @@ const NAV: NavItem[] = [
   { to: '/groups', label: 'Группы', icon: Layers, roles: 'all' },
   { to: '/lessons', label: 'Уроки', icon: CalendarClock, roles: ['student', 'teacher', 'methodist', 'admin', 'branch_manager'] },
   { to: '/homework', label: 'Домашки', icon: PenLine, roles: ['student', 'teacher', 'methodist', 'admin'] },
+  { to: '/my-students', label: 'Мои студенты', icon: Users, roles: ['teacher'] },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: '/admin', label: 'Заявки', icon: ShieldCheck, roles: ['admin', 'methodist', 'branch_manager'] },
+  { to: '/teachers', label: 'Преподаватели', icon: GraduationCap, roles: ['admin', 'methodist', 'branch_manager'] },
   { to: '/branches', label: 'Филиалы', icon: Building2, roles: ['admin', 'methodist', 'branch_manager'] },
   { to: '/users', label: 'Пользователи', icon: Users, roles: ['admin', 'branch_manager'] },
 ];

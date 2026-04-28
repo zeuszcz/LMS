@@ -17,6 +17,8 @@ import { UsersPage } from './pages/UsersPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
+import { TeachersPage } from './pages/TeachersPage';
+import { MyStudentsPage } from './pages/MyStudentsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export function App() {
@@ -45,6 +47,8 @@ export function App() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/teachers" element={<TeachersPage />} />
+          <Route path="/my-students" element={<MyStudentsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

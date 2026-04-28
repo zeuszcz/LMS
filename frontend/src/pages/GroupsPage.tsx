@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, Layers } from 'lucide-react';
+import { ArrowUpRight, Layers, Plus } from 'lucide-react';
 import { fetchGroups } from '@/api/groups';
 import { fetchCourses } from '@/api/courses';
 import { fetchBranches } from '@/api/branches';
@@ -9,9 +10,20 @@ import { LanguageMark } from '@/components/ui/LanguageMark';
 import { GroupStatusPill } from '@/components/ui/StatusPill';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { CreateGroupModal } from '@/components/forms/CreateGroupModal';
+import { useAuthStore } from '@/stores/authStore';
 import { GROUP_MODE_LABEL, formatDate } from '@/lib/format';
 
 export function GroupsPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const canCreate =
+    !!user &&
+    (user.is_superuser ||
+      user.roles.includes('admin') ||
+      user.roles.includes('methodist') ||
+      user.roles.includes('branch_manager'));
+
   const groups = useQuery({ queryKey: ['groups'], queryFn: () => fetchGroups() });
   const courses = useQuery({
     queryKey: ['courses-all'],
@@ -28,6 +40,13 @@ export function GroupsPage() {
         eyebrow="Учебные группы"
         title="Группы"
         description={`Активных учебных групп: ${groups.data?.length ?? '—'}.`}
+        actions={
+          canCreate ? (
+            <button onClick={() => setCreateOpen(true)} className="btn-primary">
+              <Plus size={14} strokeWidth={2.5} /> Создать группу
+            </button>
+          ) : undefined
+        }
       />
 
       {groups.isLoading ? (
@@ -44,7 +63,18 @@ export function GroupsPage() {
         <EmptyState
           icon={<Layers size={20} strokeWidth={1.6} />}
           title="Групп пока нет"
-          description="У вас нет доступа к группам или группы ещё не созданы методистом."
+          description={
+            canCreate
+              ? 'Создайте первую группу — выберите курс, филиал, преподавателя и расписание.'
+              : 'У вас нет доступных групп.'
+          }
+          action={
+            canCreate ? (
+              <button onClick={() => setCreateOpen(true)} className="btn-primary">
+                <Plus size={14} strokeWidth={2.5} /> Создать группу
+              </button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -55,32 +85,34 @@ export function GroupsPage() {
               <Link
                 key={g.id}
                 to={`/groups/${g.id}`}
-                className="card group hover:border-forest-700 transition-colors flex flex-col"
+                className="card group tappable hover:border-forest-500 hover:shadow-pop transition-all flex flex-col"
               >
                 <div className="flex items-start justify-between gap-3">
                   {course && <LanguageMark language={course.language} size="lg" />}
                   <span className="pill-forest font-mono">{course?.level ?? '—'}</span>
                 </div>
-                <h3 className="font-display text-base font-semibold text-ink-900 mt-4 leading-tight text-balance">
+                <h3 className="font-display text-base font-extrabold text-ink-900 mt-4 leading-tight text-balance">
                   {course?.title ?? 'Курс не определён'}
                 </h3>
                 <div className="text-xs text-ink-500 mt-1">
                   {branch?.name ?? 'Онлайн-формат'} · {GROUP_MODE_LABEL[g.mode]}
                 </div>
 
-                <div className="rule mt-5 pt-3 flex items-center justify-between text-[11px] tracking-tight">
-                  <span className="text-ink-500 num">с {formatDate(g.start_date)}</span>
+                <div className="mt-5 pt-4 border-t border-paper-300 flex items-center justify-between">
+                  <span className="text-[11px] text-ink-500 num">с {formatDate(g.start_date)}</span>
                   <GroupStatusPill status={g.status} />
                 </div>
-                <div className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-forest-700 group-hover:gap-2 transition-all">
+                <div className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-forest-700 group-hover:gap-2 transition-all">
                   Открыть журнал
-                  <ArrowUpRight size={12} strokeWidth={2} />
+                  <ArrowUpRight size={12} strokeWidth={2.5} />
                 </div>
               </Link>
             );
           })}
         </div>
       )}
+
+      <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
   );
 }

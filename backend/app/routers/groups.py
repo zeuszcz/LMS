@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pydantic import BaseModel, Field
+
 from app.core.auth import CurrentUser
 from app.core.database import get_db
-from app.models.group import Enrollment, Group
+from app.models.group import Enrollment, Group, GroupStatus
 from app.models.schedule import ScheduleSlot
 from app.models.user import User, UserRole
 from app.schemas.group import (
@@ -113,6 +115,73 @@ async def get_group(
         **GroupOut.model_validate(group).model_dump(),
         slots=[s for s in slots.scalars().all()],
     )
+
+
+class GroupPatch(BaseModel):
+    teacher_id: UUID | None = None
+    branch_id: UUID | None = None
+    max_students: int | None = Field(default=None, ge=1, le=30)
+    status: GroupStatus | None = None
+
+
+@router.patch("/{group_id}", response_model=GroupDetail)
+async def update_group(
+    group_id: UUID,
+    payload: GroupPatch,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GroupDetail:
+    result = await db.execute(select(Group).where(Group.id == group_id))
+    group = result.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not permissions.can_manage_group(user, group.branch_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot manage this group")
+
+    fields = payload.model_dump(exclude_unset=True)
+    for k, v in fields.items():
+        setattr(group, k, v)
+    await db.commit()
+    await db.refresh(group)
+
+    slots = await db.execute(select(ScheduleSlot).where(ScheduleSlot.group_id == group_id))
+    return GroupDetail(
+        **GroupOut.model_validate(group).model_dump(),
+        slots=[s for s in slots.scalars().all()],
+    )
+
+
+@router.delete(
+    "/{group_id}/enrollments/{student_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def unenroll(
+    group_id: UUID,
+    student_id: UUID,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    group_res = await db.execute(select(Group).where(Group.id == group_id))
+    group = group_res.scalar_one_or_none()
+    if group is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group not found")
+    if not permissions.can_manage_group(user, group.branch_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    enrolled = await db.execute(
+        select(Enrollment).where(
+            Enrollment.student_id == student_id,
+            Enrollment.group_id == group_id,
+            Enrollment.left_at.is_(None),
+            Enrollment.deleted_at.is_(None),
+        )
+    )
+    enrollment = enrolled.scalar_one_or_none()
+    if enrollment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enrollment not found")
+
+    enrollment.left_at = datetime.now(UTC)
+    await db.commit()
 
 
 @router.post(
